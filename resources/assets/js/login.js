@@ -38,7 +38,7 @@ const app = new Vue({
     methods: {
 
     	loginFormSubmit: function() {
-    		var loginData = $("#loginForm").serializeArray(), self = this;
+    		/*var loginData = $("#loginForm").serializeArray(), self = this;
             var data = {
                 _toke: loginData[0].value,
                 username: loginData[1].value,
@@ -50,7 +50,9 @@ const app = new Vue({
             }, (response) => {
                 self.msgError = response.data.error;
                 self.formLoad = false;
-            });
+            });*/
+
+            // Check if username is already logged in
     	},
 
         emailFormSubmit: function() {

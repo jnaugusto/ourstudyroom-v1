@@ -186,6 +186,9 @@ h1, h2, h3, h4, h5, h6 {
 			text-align: center;
 			color: rgb(169, 68, 66);
 		}
+		.ui.form .field.override > .error-login {
+			margin-top: 3px!important;
+		}
 
 		.ui.form .field.override.center-info {
 			@include display-flex();

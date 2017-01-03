@@ -18,5 +18,10 @@ Auth::routes();
 Route::get('/home', 'HomeController@index');
 
 Route::get('/test', function() {
-	return App\User::all()->staffs();
+	return App\User::create([
+            'username' => 'jessnoel',
+            'password' => bcrypt('friendly1'),
+            'role_id' => 1,
+            'email' => 'jessnoelaugusto@gmail.com'
+        ]);
 });

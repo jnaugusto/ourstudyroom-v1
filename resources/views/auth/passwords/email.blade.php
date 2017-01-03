@@ -41,3 +41,9 @@
         </form>
     </div>
 @endsection
+
+@section('general-forgot-pass')
+    <div class="general-parts forgot-pass">
+        Do you want to login?<a href="{{ url('/login') }}">Click here</a>
+    </div>
+@endsection

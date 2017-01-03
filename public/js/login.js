@@ -14,7 +14,7 @@
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.3';
+  var VERSION = '4.17.4';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
@@ -5634,8 +5634,8 @@
      * @param {string} key The key of the property to inspect.
      * @returns {*} Returns the uncloned value or `undefined` to defer cloning to `_.cloneDeep`.
      */
-    function customOmitClone(value, key) {
-      return (key !== undefined && isPlainObject(value)) ? undefined : value;
+    function customOmitClone(value) {
+      return isPlainObject(value) ? undefined : value;
     }
 
     /**
@@ -27710,9 +27710,9 @@ if (module.hot) {(function () {  module.hot.accept()
   hotAPI.install(require("vue"), true)
   if (!hotAPI.compatible) return
   if (!module.hot.data) {
-    hotAPI.createRecord("_v-3f8eb997", module.exports)
+    hotAPI.createRecord("_v-090555f3", module.exports)
   } else {
-    hotAPI.update("_v-3f8eb997", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+    hotAPI.update("_v-090555f3", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
   }
 })()}
 },{"vue":5,"vue-hot-reload-api":3}],8:[function(require,module,exports){
@@ -27754,20 +27754,21 @@ var app = new Vue({
     methods: {
 
         loginFormSubmit: function loginFormSubmit() {
-            var loginData = $("#loginForm").serializeArray(),
-                self = this;
-            var data = {
-                _toke: loginData[0].value,
-                username: loginData[1].value,
-                password: loginData[2].value
-            };
-            this.clearData();
-            this.$http.post('login', data).then(function (response) {
-                location.reload();
-            }, function (response) {
-                self.msgError = response.data.error;
-                self.formLoad = false;
-            });
+            /*var loginData = $("#loginForm").serializeArray(), self = this;
+                  var data = {
+                      _toke: loginData[0].value,
+                      username: loginData[1].value,
+                      password: loginData[2].value
+                  }
+                  this.clearData();
+            this.$http.post('login', data).then((response) => {
+                      location.reload();
+                  }, (response) => {
+                      self.msgError = response.data.error;
+                      self.formLoad = false;
+                  });*/
+
+            // Check if username is already logged in
         },
 
         emailFormSubmit: function emailFormSubmit() {

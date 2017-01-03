@@ -12,18 +12,23 @@
                 <i class="translate icon"></i>
             </div>
         </div>
-        <form class="general-body-content" id="loginForm" v-on:submit.prevent="loginFormSubmit">
+        <form class="general-body-content" id="loginForm" method="POST" action="{{ url('login') }}">
             {{ csrf_field() }}
             
             <div class="gen-body ui segment override loaders">
-                <div class="ui active inverted dimmer custom-loading" v-show="formLoad">
-                    <img src="{{ asset('images/loading.svg') }}">
-                </div>
                 <div class="ui form">
+                    @if (session('status'))
+                    <div class="field override">
+                        <div class="ui visible message positive mini">
+                          <p>{{ session('status') }}</p>
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="field override margin">
                         <label class="field-title">Username</label>
                         <div class="ui left icon input override">
-                            <input type="text" name="username" placeholder="Username" required autofocus>
+                            <input type="text" name="username" placeholder="Username" value="{{ old('username') }}" required autofocus>
                             <i class="user icon"></i>   
                         </div>
                     </div>  
@@ -34,7 +39,12 @@
                             <i class="lock icon"></i>
                         </div>
                     </div>
-                    <div class="field override"><label class="error-login">@{{ msgError }}</label></div>
+
+                    @if ($errors->has('username'))
+                    <div class="field override">
+                        <label class="error-login">{{ $errors->first('username') }}</label>
+                    </div>
+                    @endif
                 </div>
             </div>
             <div class="gen-footer">
