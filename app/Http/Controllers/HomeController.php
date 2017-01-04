@@ -26,6 +26,10 @@ class HomeController extends Controller
      */
     public function index()
     {
-        return view('home');
+        $role = strtolower(Auth::user()->roles->role_name);
+        return view('users.'.$role.'.dashboard', [
+            'accountInfo' => Auth::user(),
+            'userInfo' => Auth::user()->staffs
+        ]);
     }
 }

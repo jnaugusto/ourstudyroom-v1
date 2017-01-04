@@ -427,8 +427,8 @@ ul.navigation {
 			}
 		}
 
-		.active,
-		.main-menu.active:hover {
+		.main-menu.router-link-active,
+		.main-menu.router-link-active:hover {
 		    text-shadow: 1px .5px 1px rgba(0, 0, 0, 0.4);
 			background-color: $color-green;
 			color: #fff;
@@ -656,7 +656,11 @@ ul.navigation {
 			padding-left: 36px!important;
 		}
 	}
-
+	.content-container {
+		height: 100%;
+		@include display-flex();
+		@include flex-direction(column);
+	}
 	.general-body.content {
 		height: 100%;
 		margin: 10px 20px 0px!important;

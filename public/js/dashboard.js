@@ -1,4 +1,339 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+module.exports = { "default": require("core-js/library/fn/object/keys"), __esModule: true };
+},{"core-js/library/fn/object/keys":2}],2:[function(require,module,exports){
+require('../../modules/es6.object.keys');
+module.exports = require('../../modules/_core').Object.keys;
+},{"../../modules/_core":7,"../../modules/es6.object.keys":35}],3:[function(require,module,exports){
+module.exports = function(it){
+  if(typeof it != 'function')throw TypeError(it + ' is not a function!');
+  return it;
+};
+},{}],4:[function(require,module,exports){
+var isObject = require('./_is-object');
+module.exports = function(it){
+  if(!isObject(it))throw TypeError(it + ' is not an object!');
+  return it;
+};
+},{"./_is-object":20}],5:[function(require,module,exports){
+// false -> Array#indexOf
+// true  -> Array#includes
+var toIObject = require('./_to-iobject')
+  , toLength  = require('./_to-length')
+  , toIndex   = require('./_to-index');
+module.exports = function(IS_INCLUDES){
+  return function($this, el, fromIndex){
+    var O      = toIObject($this)
+      , length = toLength(O.length)
+      , index  = toIndex(fromIndex, length)
+      , value;
+    // Array#includes uses SameValueZero equality algorithm
+    if(IS_INCLUDES && el != el)while(length > index){
+      value = O[index++];
+      if(value != value)return true;
+    // Array#toIndex ignores holes, Array#includes - not
+    } else for(;length > index; index++)if(IS_INCLUDES || index in O){
+      if(O[index] === el)return IS_INCLUDES || index || 0;
+    } return !IS_INCLUDES && -1;
+  };
+};
+},{"./_to-index":28,"./_to-iobject":30,"./_to-length":31}],6:[function(require,module,exports){
+var toString = {}.toString;
+
+module.exports = function(it){
+  return toString.call(it).slice(8, -1);
+};
+},{}],7:[function(require,module,exports){
+var core = module.exports = {version: '2.4.0'};
+if(typeof __e == 'number')__e = core; // eslint-disable-line no-undef
+},{}],8:[function(require,module,exports){
+// optional / simple context binding
+var aFunction = require('./_a-function');
+module.exports = function(fn, that, length){
+  aFunction(fn);
+  if(that === undefined)return fn;
+  switch(length){
+    case 1: return function(a){
+      return fn.call(that, a);
+    };
+    case 2: return function(a, b){
+      return fn.call(that, a, b);
+    };
+    case 3: return function(a, b, c){
+      return fn.call(that, a, b, c);
+    };
+  }
+  return function(/* ...args */){
+    return fn.apply(that, arguments);
+  };
+};
+},{"./_a-function":3}],9:[function(require,module,exports){
+// 7.2.1 RequireObjectCoercible(argument)
+module.exports = function(it){
+  if(it == undefined)throw TypeError("Can't call method on  " + it);
+  return it;
+};
+},{}],10:[function(require,module,exports){
+// Thank's IE8 for his funny defineProperty
+module.exports = !require('./_fails')(function(){
+  return Object.defineProperty({}, 'a', {get: function(){ return 7; }}).a != 7;
+});
+},{"./_fails":14}],11:[function(require,module,exports){
+var isObject = require('./_is-object')
+  , document = require('./_global').document
+  // in old IE typeof document.createElement is 'object'
+  , is = isObject(document) && isObject(document.createElement);
+module.exports = function(it){
+  return is ? document.createElement(it) : {};
+};
+},{"./_global":15,"./_is-object":20}],12:[function(require,module,exports){
+// IE 8- don't enum bug keys
+module.exports = (
+  'constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf'
+).split(',');
+},{}],13:[function(require,module,exports){
+var global    = require('./_global')
+  , core      = require('./_core')
+  , ctx       = require('./_ctx')
+  , hide      = require('./_hide')
+  , PROTOTYPE = 'prototype';
+
+var $export = function(type, name, source){
+  var IS_FORCED = type & $export.F
+    , IS_GLOBAL = type & $export.G
+    , IS_STATIC = type & $export.S
+    , IS_PROTO  = type & $export.P
+    , IS_BIND   = type & $export.B
+    , IS_WRAP   = type & $export.W
+    , exports   = IS_GLOBAL ? core : core[name] || (core[name] = {})
+    , expProto  = exports[PROTOTYPE]
+    , target    = IS_GLOBAL ? global : IS_STATIC ? global[name] : (global[name] || {})[PROTOTYPE]
+    , key, own, out;
+  if(IS_GLOBAL)source = name;
+  for(key in source){
+    // contains in native
+    own = !IS_FORCED && target && target[key] !== undefined;
+    if(own && key in exports)continue;
+    // export native or passed
+    out = own ? target[key] : source[key];
+    // prevent global pollution for namespaces
+    exports[key] = IS_GLOBAL && typeof target[key] != 'function' ? source[key]
+    // bind timers to global for call from export context
+    : IS_BIND && own ? ctx(out, global)
+    // wrap global constructors for prevent change them in library
+    : IS_WRAP && target[key] == out ? (function(C){
+      var F = function(a, b, c){
+        if(this instanceof C){
+          switch(arguments.length){
+            case 0: return new C;
+            case 1: return new C(a);
+            case 2: return new C(a, b);
+          } return new C(a, b, c);
+        } return C.apply(this, arguments);
+      };
+      F[PROTOTYPE] = C[PROTOTYPE];
+      return F;
+    // make static versions for prototype methods
+    })(out) : IS_PROTO && typeof out == 'function' ? ctx(Function.call, out) : out;
+    // export proto methods to core.%CONSTRUCTOR%.methods.%NAME%
+    if(IS_PROTO){
+      (exports.virtual || (exports.virtual = {}))[key] = out;
+      // export proto methods to core.%CONSTRUCTOR%.prototype.%NAME%
+      if(type & $export.R && expProto && !expProto[key])hide(expProto, key, out);
+    }
+  }
+};
+// type bitmap
+$export.F = 1;   // forced
+$export.G = 2;   // global
+$export.S = 4;   // static
+$export.P = 8;   // proto
+$export.B = 16;  // bind
+$export.W = 32;  // wrap
+$export.U = 64;  // safe
+$export.R = 128; // real proto method for `library` 
+module.exports = $export;
+},{"./_core":7,"./_ctx":8,"./_global":15,"./_hide":17}],14:[function(require,module,exports){
+module.exports = function(exec){
+  try {
+    return !!exec();
+  } catch(e){
+    return true;
+  }
+};
+},{}],15:[function(require,module,exports){
+// https://github.com/zloirock/core-js/issues/86#issuecomment-115759028
+var global = module.exports = typeof window != 'undefined' && window.Math == Math
+  ? window : typeof self != 'undefined' && self.Math == Math ? self : Function('return this')();
+if(typeof __g == 'number')__g = global; // eslint-disable-line no-undef
+},{}],16:[function(require,module,exports){
+var hasOwnProperty = {}.hasOwnProperty;
+module.exports = function(it, key){
+  return hasOwnProperty.call(it, key);
+};
+},{}],17:[function(require,module,exports){
+var dP         = require('./_object-dp')
+  , createDesc = require('./_property-desc');
+module.exports = require('./_descriptors') ? function(object, key, value){
+  return dP.f(object, key, createDesc(1, value));
+} : function(object, key, value){
+  object[key] = value;
+  return object;
+};
+},{"./_descriptors":10,"./_object-dp":21,"./_property-desc":25}],18:[function(require,module,exports){
+module.exports = !require('./_descriptors') && !require('./_fails')(function(){
+  return Object.defineProperty(require('./_dom-create')('div'), 'a', {get: function(){ return 7; }}).a != 7;
+});
+},{"./_descriptors":10,"./_dom-create":11,"./_fails":14}],19:[function(require,module,exports){
+// fallback for non-array-like ES3 and non-enumerable old V8 strings
+var cof = require('./_cof');
+module.exports = Object('z').propertyIsEnumerable(0) ? Object : function(it){
+  return cof(it) == 'String' ? it.split('') : Object(it);
+};
+},{"./_cof":6}],20:[function(require,module,exports){
+module.exports = function(it){
+  return typeof it === 'object' ? it !== null : typeof it === 'function';
+};
+},{}],21:[function(require,module,exports){
+var anObject       = require('./_an-object')
+  , IE8_DOM_DEFINE = require('./_ie8-dom-define')
+  , toPrimitive    = require('./_to-primitive')
+  , dP             = Object.defineProperty;
+
+exports.f = require('./_descriptors') ? Object.defineProperty : function defineProperty(O, P, Attributes){
+  anObject(O);
+  P = toPrimitive(P, true);
+  anObject(Attributes);
+  if(IE8_DOM_DEFINE)try {
+    return dP(O, P, Attributes);
+  } catch(e){ /* empty */ }
+  if('get' in Attributes || 'set' in Attributes)throw TypeError('Accessors not supported!');
+  if('value' in Attributes)O[P] = Attributes.value;
+  return O;
+};
+},{"./_an-object":4,"./_descriptors":10,"./_ie8-dom-define":18,"./_to-primitive":33}],22:[function(require,module,exports){
+var has          = require('./_has')
+  , toIObject    = require('./_to-iobject')
+  , arrayIndexOf = require('./_array-includes')(false)
+  , IE_PROTO     = require('./_shared-key')('IE_PROTO');
+
+module.exports = function(object, names){
+  var O      = toIObject(object)
+    , i      = 0
+    , result = []
+    , key;
+  for(key in O)if(key != IE_PROTO)has(O, key) && result.push(key);
+  // Don't enum bug & hidden keys
+  while(names.length > i)if(has(O, key = names[i++])){
+    ~arrayIndexOf(result, key) || result.push(key);
+  }
+  return result;
+};
+},{"./_array-includes":5,"./_has":16,"./_shared-key":26,"./_to-iobject":30}],23:[function(require,module,exports){
+// 19.1.2.14 / 15.2.3.14 Object.keys(O)
+var $keys       = require('./_object-keys-internal')
+  , enumBugKeys = require('./_enum-bug-keys');
+
+module.exports = Object.keys || function keys(O){
+  return $keys(O, enumBugKeys);
+};
+},{"./_enum-bug-keys":12,"./_object-keys-internal":22}],24:[function(require,module,exports){
+// most Object methods by ES6 should accept primitives
+var $export = require('./_export')
+  , core    = require('./_core')
+  , fails   = require('./_fails');
+module.exports = function(KEY, exec){
+  var fn  = (core.Object || {})[KEY] || Object[KEY]
+    , exp = {};
+  exp[KEY] = exec(fn);
+  $export($export.S + $export.F * fails(function(){ fn(1); }), 'Object', exp);
+};
+},{"./_core":7,"./_export":13,"./_fails":14}],25:[function(require,module,exports){
+module.exports = function(bitmap, value){
+  return {
+    enumerable  : !(bitmap & 1),
+    configurable: !(bitmap & 2),
+    writable    : !(bitmap & 4),
+    value       : value
+  };
+};
+},{}],26:[function(require,module,exports){
+var shared = require('./_shared')('keys')
+  , uid    = require('./_uid');
+module.exports = function(key){
+  return shared[key] || (shared[key] = uid(key));
+};
+},{"./_shared":27,"./_uid":34}],27:[function(require,module,exports){
+var global = require('./_global')
+  , SHARED = '__core-js_shared__'
+  , store  = global[SHARED] || (global[SHARED] = {});
+module.exports = function(key){
+  return store[key] || (store[key] = {});
+};
+},{"./_global":15}],28:[function(require,module,exports){
+var toInteger = require('./_to-integer')
+  , max       = Math.max
+  , min       = Math.min;
+module.exports = function(index, length){
+  index = toInteger(index);
+  return index < 0 ? max(index + length, 0) : min(index, length);
+};
+},{"./_to-integer":29}],29:[function(require,module,exports){
+// 7.1.4 ToInteger
+var ceil  = Math.ceil
+  , floor = Math.floor;
+module.exports = function(it){
+  return isNaN(it = +it) ? 0 : (it > 0 ? floor : ceil)(it);
+};
+},{}],30:[function(require,module,exports){
+// to indexed object, toObject with fallback for non-array-like ES3 strings
+var IObject = require('./_iobject')
+  , defined = require('./_defined');
+module.exports = function(it){
+  return IObject(defined(it));
+};
+},{"./_defined":9,"./_iobject":19}],31:[function(require,module,exports){
+// 7.1.15 ToLength
+var toInteger = require('./_to-integer')
+  , min       = Math.min;
+module.exports = function(it){
+  return it > 0 ? min(toInteger(it), 0x1fffffffffffff) : 0; // pow(2, 53) - 1 == 9007199254740991
+};
+},{"./_to-integer":29}],32:[function(require,module,exports){
+// 7.1.13 ToObject(argument)
+var defined = require('./_defined');
+module.exports = function(it){
+  return Object(defined(it));
+};
+},{"./_defined":9}],33:[function(require,module,exports){
+// 7.1.1 ToPrimitive(input [, PreferredType])
+var isObject = require('./_is-object');
+// instead of the ES6 spec version, we didn't implement @@toPrimitive case
+// and the second argument - flag - preferred type is a string
+module.exports = function(it, S){
+  if(!isObject(it))return it;
+  var fn, val;
+  if(S && typeof (fn = it.toString) == 'function' && !isObject(val = fn.call(it)))return val;
+  if(typeof (fn = it.valueOf) == 'function' && !isObject(val = fn.call(it)))return val;
+  if(!S && typeof (fn = it.toString) == 'function' && !isObject(val = fn.call(it)))return val;
+  throw TypeError("Can't convert object to primitive value");
+};
+},{"./_is-object":20}],34:[function(require,module,exports){
+var id = 0
+  , px = Math.random();
+module.exports = function(key){
+  return 'Symbol('.concat(key === undefined ? '' : key, ')_', (++id + px).toString(36));
+};
+},{}],35:[function(require,module,exports){
+// 19.1.2.14 Object.keys(O)
+var toObject = require('./_to-object')
+  , $keys    = require('./_object-keys');
+
+require('./_object-sap')('keys', function(){
+  return function keys(it){
+    return $keys(toObject(it));
+  };
+});
+},{"./_object-keys":23,"./_object-sap":24,"./_to-object":32}],36:[function(require,module,exports){
 (function (global){
 /**
  * @license
@@ -17086,7 +17421,7 @@
 }.call(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],2:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -17268,7 +17603,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],3:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 var Vue // late bind
 var map = Object.create(null)
 var shimmed = false
@@ -17569,7 +17904,7 @@ function format (id) {
   return match ? match[0] : id
 }
 
-},{}],4:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 /*!
  * vue-resource v1.0.3
  * https://github.com/vuejs/vue-resource
@@ -19088,7 +19423,2071 @@ if (typeof window !== 'undefined' && window.Vue) {
 }
 
 module.exports = plugin;
-},{}],5:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
+(function (process){
+/**
+  * vue-router v2.1.1
+  * (c) 2016 Evan You
+  * @license MIT
+  */
+'use strict';
+
+var View = {
+  name: 'router-view',
+  functional: true,
+  props: {
+    name: {
+      type: String,
+      default: 'default'
+    }
+  },
+  render: function render (h, ref) {
+    var props = ref.props;
+    var children = ref.children;
+    var parent = ref.parent;
+    var data = ref.data;
+
+    data.routerView = true
+
+    var route = parent.$route
+    var cache = parent._routerViewCache || (parent._routerViewCache = {})
+    var depth = 0
+    var inactive = false
+
+    while (parent) {
+      if (parent.$vnode && parent.$vnode.data.routerView) {
+        depth++
+      }
+      if (parent._inactive) {
+        inactive = true
+      }
+      parent = parent.$parent
+    }
+
+    data.routerViewDepth = depth
+    var matched = route.matched[depth]
+    if (!matched) {
+      return h()
+    }
+
+    var name = props.name
+    var component = inactive
+      ? cache[name]
+      : (cache[name] = matched.components[name])
+
+    if (!inactive) {
+      var hooks = data.hook || (data.hook = {})
+      hooks.init = function (vnode) {
+        matched.instances[name] = vnode.child
+      }
+      hooks.prepatch = function (oldVnode, vnode) {
+        matched.instances[name] = vnode.child
+      }
+      hooks.destroy = function (vnode) {
+        if (matched.instances[name] === vnode.child) {
+          matched.instances[name] = undefined
+        }
+      }
+    }
+
+    return h(component, data, children)
+  }
+}
+
+/*  */
+
+function assert (condition, message) {
+  if (!condition) {
+    throw new Error(("[vue-router] " + message))
+  }
+}
+
+function warn (condition, message) {
+  if (!condition) {
+    typeof console !== 'undefined' && console.warn(("[vue-router] " + message))
+  }
+}
+
+/*  */
+
+var encode = encodeURIComponent
+var decode = decodeURIComponent
+
+function resolveQuery (
+  query,
+  extraQuery
+) {
+  if ( extraQuery === void 0 ) extraQuery = {};
+
+  if (query) {
+    var parsedQuery
+    try {
+      parsedQuery = parseQuery(query)
+    } catch (e) {
+      process.env.NODE_ENV !== 'production' && warn(false, e.message)
+      parsedQuery = {}
+    }
+    for (var key in extraQuery) {
+      parsedQuery[key] = extraQuery[key]
+    }
+    return parsedQuery
+  } else {
+    return extraQuery
+  }
+}
+
+function parseQuery (query) {
+  var res = {}
+
+  query = query.trim().replace(/^(\?|#|&)/, '')
+
+  if (!query) {
+    return res
+  }
+
+  query.split('&').forEach(function (param) {
+    var parts = param.replace(/\+/g, ' ').split('=')
+    var key = decode(parts.shift())
+    var val = parts.length > 0
+      ? decode(parts.join('='))
+      : null
+
+    if (res[key] === undefined) {
+      res[key] = val
+    } else if (Array.isArray(res[key])) {
+      res[key].push(val)
+    } else {
+      res[key] = [res[key], val]
+    }
+  })
+
+  return res
+}
+
+function stringifyQuery (obj) {
+  var res = obj ? Object.keys(obj).map(function (key) {
+    var val = obj[key]
+
+    if (val === undefined) {
+      return ''
+    }
+
+    if (val === null) {
+      return encode(key)
+    }
+
+    if (Array.isArray(val)) {
+      var result = []
+      val.slice().forEach(function (val2) {
+        if (val2 === undefined) {
+          return
+        }
+        if (val2 === null) {
+          result.push(encode(key))
+        } else {
+          result.push(encode(key) + '=' + encode(val2))
+        }
+      })
+      return result.join('&')
+    }
+
+    return encode(key) + '=' + encode(val)
+  }).filter(function (x) { return x.length > 0; }).join('&') : null
+  return res ? ("?" + res) : ''
+}
+
+/*  */
+
+function createRoute (
+  record,
+  location,
+  redirectedFrom
+) {
+  var route = {
+    name: location.name || (record && record.name),
+    meta: (record && record.meta) || {},
+    path: location.path || '/',
+    hash: location.hash || '',
+    query: location.query || {},
+    params: location.params || {},
+    fullPath: getFullPath(location),
+    matched: record ? formatMatch(record) : []
+  }
+  if (redirectedFrom) {
+    route.redirectedFrom = getFullPath(redirectedFrom)
+  }
+  return Object.freeze(route)
+}
+
+// the starting route that represents the initial state
+var START = createRoute(null, {
+  path: '/'
+})
+
+function formatMatch (record) {
+  var res = []
+  while (record) {
+    res.unshift(record)
+    record = record.parent
+  }
+  return res
+}
+
+function getFullPath (ref) {
+  var path = ref.path;
+  var query = ref.query; if ( query === void 0 ) query = {};
+  var hash = ref.hash; if ( hash === void 0 ) hash = '';
+
+  return (path || '/') + stringifyQuery(query) + hash
+}
+
+var trailingSlashRE = /\/$/
+function isSameRoute (a, b) {
+  if (b === START) {
+    return a === b
+  } else if (!b) {
+    return false
+  } else if (a.path && b.path) {
+    return (
+      a.path.replace(trailingSlashRE, '') === b.path.replace(trailingSlashRE, '') &&
+      a.hash === b.hash &&
+      isObjectEqual(a.query, b.query)
+    )
+  } else if (a.name && b.name) {
+    return (
+      a.name === b.name &&
+      a.hash === b.hash &&
+      isObjectEqual(a.query, b.query) &&
+      isObjectEqual(a.params, b.params)
+    )
+  } else {
+    return false
+  }
+}
+
+function isObjectEqual (a, b) {
+  if ( a === void 0 ) a = {};
+  if ( b === void 0 ) b = {};
+
+  var aKeys = Object.keys(a)
+  var bKeys = Object.keys(b)
+  if (aKeys.length !== bKeys.length) {
+    return false
+  }
+  return aKeys.every(function (key) { return String(a[key]) === String(b[key]); })
+}
+
+function isIncludedRoute (current, target) {
+  return (
+    current.path.indexOf(target.path.replace(/\/$/, '')) === 0 &&
+    (!target.hash || current.hash === target.hash) &&
+    queryIncludes(current.query, target.query)
+  )
+}
+
+function queryIncludes (current, target) {
+  for (var key in target) {
+    if (!(key in current)) {
+      return false
+    }
+  }
+  return true
+}
+
+/*  */
+
+// work around weird flow bug
+var toTypes = [String, Object]
+
+var Link = {
+  name: 'router-link',
+  props: {
+    to: {
+      type: toTypes,
+      required: true
+    },
+    tag: {
+      type: String,
+      default: 'a'
+    },
+    exact: Boolean,
+    append: Boolean,
+    replace: Boolean,
+    activeClass: String,
+    event: {
+      type: [String, Array],
+      default: 'click'
+    }
+  },
+  render: function render (h) {
+    var this$1 = this;
+
+    var router = this.$router
+    var current = this.$route
+    var ref = router.resolve(this.to, current, this.append);
+    var normalizedTo = ref.normalizedTo;
+    var resolved = ref.resolved;
+    var href = ref.href;
+    var classes = {}
+    var activeClass = this.activeClass || router.options.linkActiveClass || 'router-link-active'
+    var compareTarget = normalizedTo.path ? createRoute(null, normalizedTo) : resolved
+    classes[activeClass] = this.exact
+      ? isSameRoute(current, compareTarget)
+      : isIncludedRoute(current, compareTarget)
+
+    var handler = function (e) {
+      if (guardEvent(e)) {
+        if (this$1.replace) {
+          router.replace(normalizedTo)
+        } else {
+          router.push(normalizedTo)
+        }
+      }
+    }
+
+    var on = { click: guardEvent }
+    if (Array.isArray(this.event)) {
+      this.event.forEach(function (e) { on[e] = handler })
+    } else {
+      on[this.event] = handler
+    }
+
+    var data = {
+      class: classes
+    }
+
+    if (this.tag === 'a') {
+      data.on = on
+      data.attrs = { href: href }
+    } else {
+      // find the first <a> child and apply listener and href
+      var a = findAnchor(this.$slots.default)
+      if (a) {
+        // in case the <a> is a static node
+        a.isStatic = false
+        var extend = _Vue.util.extend
+        var aData = a.data = extend({}, a.data)
+        aData.on = on
+        var aAttrs = a.data.attrs = extend({}, a.data.attrs)
+        aAttrs.href = href
+      } else {
+        // doesn't have <a> child, apply listener to self
+        data.on = on
+      }
+    }
+
+    return h(this.tag, data, this.$slots.default)
+  }
+}
+
+function guardEvent (e) {
+  // don't redirect with control keys
+  /* istanbul ignore if */
+  if (e.metaKey || e.ctrlKey || e.shiftKey) { return }
+  // don't redirect when preventDefault called
+  /* istanbul ignore if */
+  if (e.defaultPrevented) { return }
+  // don't redirect on right click
+  /* istanbul ignore if */
+  if (e.button !== 0) { return }
+  // don't redirect if `target="_blank"`
+  /* istanbul ignore if */
+  var target = e.target.getAttribute('target')
+  if (/\b_blank\b/i.test(target)) { return }
+
+  e.preventDefault()
+  return true
+}
+
+function findAnchor (children) {
+  if (children) {
+    var child
+    for (var i = 0; i < children.length; i++) {
+      child = children[i]
+      if (child.tag === 'a') {
+        return child
+      }
+      if (child.children && (child = findAnchor(child.children))) {
+        return child
+      }
+    }
+  }
+}
+
+var _Vue
+
+function install (Vue) {
+  if (install.installed) { return }
+  install.installed = true
+
+  _Vue = Vue
+
+  Object.defineProperty(Vue.prototype, '$router', {
+    get: function get () { return this.$root._router }
+  })
+
+  Object.defineProperty(Vue.prototype, '$route', {
+    get: function get$1 () { return this.$root._route }
+  })
+
+  Vue.mixin({
+    beforeCreate: function beforeCreate () {
+      if (this.$options.router) {
+        this._router = this.$options.router
+        this._router.init(this)
+        Vue.util.defineReactive(this, '_route', this._router.history.current)
+      }
+    }
+  })
+
+  Vue.component('router-view', View)
+  Vue.component('router-link', Link)
+
+  var strats = Vue.config.optionMergeStrategies
+  // use the same hook merging strategy for route hooks
+  strats.beforeRouteEnter = strats.beforeRouteLeave = strats.created
+}
+
+/*  */
+
+function resolvePath (
+  relative,
+  base,
+  append
+) {
+  if (relative.charAt(0) === '/') {
+    return relative
+  }
+
+  if (relative.charAt(0) === '?' || relative.charAt(0) === '#') {
+    return base + relative
+  }
+
+  var stack = base.split('/')
+
+  // remove trailing segment if:
+  // - not appending
+  // - appending to trailing slash (last segment is empty)
+  if (!append || !stack[stack.length - 1]) {
+    stack.pop()
+  }
+
+  // resolve relative path
+  var segments = relative.replace(/^\//, '').split('/')
+  for (var i = 0; i < segments.length; i++) {
+    var segment = segments[i]
+    if (segment === '.') {
+      continue
+    } else if (segment === '..') {
+      stack.pop()
+    } else {
+      stack.push(segment)
+    }
+  }
+
+  // ensure leading slash
+  if (stack[0] !== '') {
+    stack.unshift('')
+  }
+
+  return stack.join('/')
+}
+
+function parsePath (path) {
+  var hash = ''
+  var query = ''
+
+  var hashIndex = path.indexOf('#')
+  if (hashIndex >= 0) {
+    hash = path.slice(hashIndex)
+    path = path.slice(0, hashIndex)
+  }
+
+  var queryIndex = path.indexOf('?')
+  if (queryIndex >= 0) {
+    query = path.slice(queryIndex + 1)
+    path = path.slice(0, queryIndex)
+  }
+
+  return {
+    path: path,
+    query: query,
+    hash: hash
+  }
+}
+
+function cleanPath (path) {
+  return path.replace(/\/\//g, '/')
+}
+
+/*  */
+
+function createRouteMap (routes) {
+  var pathMap = Object.create(null)
+  var nameMap = Object.create(null)
+
+  routes.forEach(function (route) {
+    addRouteRecord(pathMap, nameMap, route)
+  })
+
+  return {
+    pathMap: pathMap,
+    nameMap: nameMap
+  }
+}
+
+function addRouteRecord (
+  pathMap,
+  nameMap,
+  route,
+  parent,
+  matchAs
+) {
+  var path = route.path;
+  var name = route.name;
+  if (process.env.NODE_ENV !== 'production') {
+    assert(path != null, "\"path\" is required in a route configuration.")
+    assert(
+      typeof route.component !== 'string',
+      "route config \"component\" for path: " + (String(path || name)) + " cannot be a " +
+      "string id. Use an actual component instead."
+    )
+  }
+
+  var record = {
+    path: normalizePath(path, parent),
+    components: route.components || { default: route.component },
+    instances: {},
+    name: name,
+    parent: parent,
+    matchAs: matchAs,
+    redirect: route.redirect,
+    beforeEnter: route.beforeEnter,
+    meta: route.meta || {}
+  }
+
+  if (route.children) {
+    // Warn if route is named and has a default child route.
+    // If users navigate to this route by name, the default child will
+    // not be rendered (GH Issue #629)
+    if (process.env.NODE_ENV !== 'production') {
+      if (route.name && route.children.some(function (child) { return /^\/?$/.test(child.path); })) {
+        warn(false, ("Named Route '" + (route.name) + "' has a default child route.\n          When navigating to this named route (:to=\"{name: '" + (route.name) + "'\"), the default child route will not be rendered.\n          Remove the name from this route and use the name of the default child route for named links instead.")
+        )
+      }
+    }
+    route.children.forEach(function (child) {
+      addRouteRecord(pathMap, nameMap, child, record)
+    })
+  }
+
+  if (route.alias !== undefined) {
+    if (Array.isArray(route.alias)) {
+      route.alias.forEach(function (alias) {
+        addRouteRecord(pathMap, nameMap, { path: alias }, parent, record.path)
+      })
+    } else {
+      addRouteRecord(pathMap, nameMap, { path: route.alias }, parent, record.path)
+    }
+  }
+
+  if (!pathMap[record.path]) {
+    pathMap[record.path] = record
+  }
+  if (name) {
+    if (!nameMap[name]) {
+      nameMap[name] = record
+    } else if (process.env.NODE_ENV !== 'production') {
+      warn(false, ("Duplicate named routes definition: { name: \"" + name + "\", path: \"" + (record.path) + "\" }"))
+    }
+  }
+}
+
+function normalizePath (path, parent) {
+  path = path.replace(/\/$/, '')
+  if (path[0] === '/') { return path }
+  if (parent == null) { return path }
+  return cleanPath(((parent.path) + "/" + path))
+}
+
+var __moduleExports = Array.isArray || function (arr) {
+  return Object.prototype.toString.call(arr) == '[object Array]';
+};
+
+var isarray = __moduleExports
+
+/**
+ * Expose `pathToRegexp`.
+ */
+var index = pathToRegexp
+var parse_1 = parse
+var compile_1 = compile
+var tokensToFunction_1 = tokensToFunction
+var tokensToRegExp_1 = tokensToRegExp
+
+/**
+ * The main path matching regexp utility.
+ *
+ * @type {RegExp}
+ */
+var PATH_REGEXP = new RegExp([
+  // Match escaped characters that would otherwise appear in future matches.
+  // This allows the user to escape special characters that won't transform.
+  '(\\\\.)',
+  // Match Express-style parameters and un-named parameters with a prefix
+  // and optional suffixes. Matches appear as:
+  //
+  // "/:test(\\d+)?" => ["/", "test", "\d+", undefined, "?", undefined]
+  // "/route(\\d+)"  => [undefined, undefined, undefined, "\d+", undefined, undefined]
+  // "/*"            => ["/", undefined, undefined, undefined, undefined, "*"]
+  '([\\/.])?(?:(?:\\:(\\w+)(?:\\(((?:\\\\.|[^\\\\()])+)\\))?|\\(((?:\\\\.|[^\\\\()])+)\\))([+*?])?|(\\*))'
+].join('|'), 'g')
+
+/**
+ * Parse a string for the raw tokens.
+ *
+ * @param  {string}  str
+ * @param  {Object=} options
+ * @return {!Array}
+ */
+function parse (str, options) {
+  var tokens = []
+  var key = 0
+  var index = 0
+  var path = ''
+  var defaultDelimiter = options && options.delimiter || '/'
+  var res
+
+  while ((res = PATH_REGEXP.exec(str)) != null) {
+    var m = res[0]
+    var escaped = res[1]
+    var offset = res.index
+    path += str.slice(index, offset)
+    index = offset + m.length
+
+    // Ignore already escaped sequences.
+    if (escaped) {
+      path += escaped[1]
+      continue
+    }
+
+    var next = str[index]
+    var prefix = res[2]
+    var name = res[3]
+    var capture = res[4]
+    var group = res[5]
+    var modifier = res[6]
+    var asterisk = res[7]
+
+    // Push the current path onto the tokens.
+    if (path) {
+      tokens.push(path)
+      path = ''
+    }
+
+    var partial = prefix != null && next != null && next !== prefix
+    var repeat = modifier === '+' || modifier === '*'
+    var optional = modifier === '?' || modifier === '*'
+    var delimiter = res[2] || defaultDelimiter
+    var pattern = capture || group
+
+    tokens.push({
+      name: name || key++,
+      prefix: prefix || '',
+      delimiter: delimiter,
+      optional: optional,
+      repeat: repeat,
+      partial: partial,
+      asterisk: !!asterisk,
+      pattern: pattern ? escapeGroup(pattern) : (asterisk ? '.*' : '[^' + escapeString(delimiter) + ']+?')
+    })
+  }
+
+  // Match any characters still remaining.
+  if (index < str.length) {
+    path += str.substr(index)
+  }
+
+  // If the path exists, push it onto the end.
+  if (path) {
+    tokens.push(path)
+  }
+
+  return tokens
+}
+
+/**
+ * Compile a string to a template function for the path.
+ *
+ * @param  {string}             str
+ * @param  {Object=}            options
+ * @return {!function(Object=, Object=)}
+ */
+function compile (str, options) {
+  return tokensToFunction(parse(str, options))
+}
+
+/**
+ * Prettier encoding of URI path segments.
+ *
+ * @param  {string}
+ * @return {string}
+ */
+function encodeURIComponentPretty (str) {
+  return encodeURI(str).replace(/[\/?#]/g, function (c) {
+    return '%' + c.charCodeAt(0).toString(16).toUpperCase()
+  })
+}
+
+/**
+ * Encode the asterisk parameter. Similar to `pretty`, but allows slashes.
+ *
+ * @param  {string}
+ * @return {string}
+ */
+function encodeAsterisk (str) {
+  return encodeURI(str).replace(/[?#]/g, function (c) {
+    return '%' + c.charCodeAt(0).toString(16).toUpperCase()
+  })
+}
+
+/**
+ * Expose a method for transforming tokens into the path function.
+ */
+function tokensToFunction (tokens) {
+  // Compile all the tokens into regexps.
+  var matches = new Array(tokens.length)
+
+  // Compile all the patterns before compilation.
+  for (var i = 0; i < tokens.length; i++) {
+    if (typeof tokens[i] === 'object') {
+      matches[i] = new RegExp('^(?:' + tokens[i].pattern + ')$')
+    }
+  }
+
+  return function (obj, opts) {
+    var path = ''
+    var data = obj || {}
+    var options = opts || {}
+    var encode = options.pretty ? encodeURIComponentPretty : encodeURIComponent
+
+    for (var i = 0; i < tokens.length; i++) {
+      var token = tokens[i]
+
+      if (typeof token === 'string') {
+        path += token
+
+        continue
+      }
+
+      var value = data[token.name]
+      var segment
+
+      if (value == null) {
+        if (token.optional) {
+          // Prepend partial segment prefixes.
+          if (token.partial) {
+            path += token.prefix
+          }
+
+          continue
+        } else {
+          throw new TypeError('Expected "' + token.name + '" to be defined')
+        }
+      }
+
+      if (isarray(value)) {
+        if (!token.repeat) {
+          throw new TypeError('Expected "' + token.name + '" to not repeat, but received `' + JSON.stringify(value) + '`')
+        }
+
+        if (value.length === 0) {
+          if (token.optional) {
+            continue
+          } else {
+            throw new TypeError('Expected "' + token.name + '" to not be empty')
+          }
+        }
+
+        for (var j = 0; j < value.length; j++) {
+          segment = encode(value[j])
+
+          if (!matches[i].test(segment)) {
+            throw new TypeError('Expected all "' + token.name + '" to match "' + token.pattern + '", but received `' + JSON.stringify(segment) + '`')
+          }
+
+          path += (j === 0 ? token.prefix : token.delimiter) + segment
+        }
+
+        continue
+      }
+
+      segment = token.asterisk ? encodeAsterisk(value) : encode(value)
+
+      if (!matches[i].test(segment)) {
+        throw new TypeError('Expected "' + token.name + '" to match "' + token.pattern + '", but received "' + segment + '"')
+      }
+
+      path += token.prefix + segment
+    }
+
+    return path
+  }
+}
+
+/**
+ * Escape a regular expression string.
+ *
+ * @param  {string} str
+ * @return {string}
+ */
+function escapeString (str) {
+  return str.replace(/([.+*?=^!:${}()[\]|\/\\])/g, '\\$1')
+}
+
+/**
+ * Escape the capturing group by escaping special characters and meaning.
+ *
+ * @param  {string} group
+ * @return {string}
+ */
+function escapeGroup (group) {
+  return group.replace(/([=!:$\/()])/g, '\\$1')
+}
+
+/**
+ * Attach the keys as a property of the regexp.
+ *
+ * @param  {!RegExp} re
+ * @param  {Array}   keys
+ * @return {!RegExp}
+ */
+function attachKeys (re, keys) {
+  re.keys = keys
+  return re
+}
+
+/**
+ * Get the flags for a regexp from the options.
+ *
+ * @param  {Object} options
+ * @return {string}
+ */
+function flags (options) {
+  return options.sensitive ? '' : 'i'
+}
+
+/**
+ * Pull out keys from a regexp.
+ *
+ * @param  {!RegExp} path
+ * @param  {!Array}  keys
+ * @return {!RegExp}
+ */
+function regexpToRegexp (path, keys) {
+  // Use a negative lookahead to match only capturing groups.
+  var groups = path.source.match(/\((?!\?)/g)
+
+  if (groups) {
+    for (var i = 0; i < groups.length; i++) {
+      keys.push({
+        name: i,
+        prefix: null,
+        delimiter: null,
+        optional: false,
+        repeat: false,
+        partial: false,
+        asterisk: false,
+        pattern: null
+      })
+    }
+  }
+
+  return attachKeys(path, keys)
+}
+
+/**
+ * Transform an array into a regexp.
+ *
+ * @param  {!Array}  path
+ * @param  {Array}   keys
+ * @param  {!Object} options
+ * @return {!RegExp}
+ */
+function arrayToRegexp (path, keys, options) {
+  var parts = []
+
+  for (var i = 0; i < path.length; i++) {
+    parts.push(pathToRegexp(path[i], keys, options).source)
+  }
+
+  var regexp = new RegExp('(?:' + parts.join('|') + ')', flags(options))
+
+  return attachKeys(regexp, keys)
+}
+
+/**
+ * Create a path regexp from string input.
+ *
+ * @param  {string}  path
+ * @param  {!Array}  keys
+ * @param  {!Object} options
+ * @return {!RegExp}
+ */
+function stringToRegexp (path, keys, options) {
+  return tokensToRegExp(parse(path, options), keys, options)
+}
+
+/**
+ * Expose a function for taking tokens and returning a RegExp.
+ *
+ * @param  {!Array}          tokens
+ * @param  {(Array|Object)=} keys
+ * @param  {Object=}         options
+ * @return {!RegExp}
+ */
+function tokensToRegExp (tokens, keys, options) {
+  if (!isarray(keys)) {
+    options = /** @type {!Object} */ (keys || options)
+    keys = []
+  }
+
+  options = options || {}
+
+  var strict = options.strict
+  var end = options.end !== false
+  var route = ''
+
+  // Iterate over the tokens and create our regexp string.
+  for (var i = 0; i < tokens.length; i++) {
+    var token = tokens[i]
+
+    if (typeof token === 'string') {
+      route += escapeString(token)
+    } else {
+      var prefix = escapeString(token.prefix)
+      var capture = '(?:' + token.pattern + ')'
+
+      keys.push(token)
+
+      if (token.repeat) {
+        capture += '(?:' + prefix + capture + ')*'
+      }
+
+      if (token.optional) {
+        if (!token.partial) {
+          capture = '(?:' + prefix + '(' + capture + '))?'
+        } else {
+          capture = prefix + '(' + capture + ')?'
+        }
+      } else {
+        capture = prefix + '(' + capture + ')'
+      }
+
+      route += capture
+    }
+  }
+
+  var delimiter = escapeString(options.delimiter || '/')
+  var endsWithDelimiter = route.slice(-delimiter.length) === delimiter
+
+  // In non-strict mode we allow a slash at the end of match. If the path to
+  // match already ends with a slash, we remove it for consistency. The slash
+  // is valid at the end of a path match, not in the middle. This is important
+  // in non-ending mode, where "/test/" shouldn't match "/test//route".
+  if (!strict) {
+    route = (endsWithDelimiter ? route.slice(0, -delimiter.length) : route) + '(?:' + delimiter + '(?=$))?'
+  }
+
+  if (end) {
+    route += '$'
+  } else {
+    // In non-ending mode, we need the capturing groups to match as much as
+    // possible by using a positive lookahead to the end or next path segment.
+    route += strict && endsWithDelimiter ? '' : '(?=' + delimiter + '|$)'
+  }
+
+  return attachKeys(new RegExp('^' + route, flags(options)), keys)
+}
+
+/**
+ * Normalize the given path string, returning a regular expression.
+ *
+ * An empty array can be passed in for the keys, which will hold the
+ * placeholder key descriptions. For example, using `/user/:id`, `keys` will
+ * contain `[{ name: 'id', delimiter: '/', optional: false, repeat: false }]`.
+ *
+ * @param  {(string|RegExp|Array)} path
+ * @param  {(Array|Object)=}       keys
+ * @param  {Object=}               options
+ * @return {!RegExp}
+ */
+function pathToRegexp (path, keys, options) {
+  if (!isarray(keys)) {
+    options = /** @type {!Object} */ (keys || options)
+    keys = []
+  }
+
+  options = options || {}
+
+  if (path instanceof RegExp) {
+    return regexpToRegexp(path, /** @type {!Array} */ (keys))
+  }
+
+  if (isarray(path)) {
+    return arrayToRegexp(/** @type {!Array} */ (path), /** @type {!Array} */ (keys), options)
+  }
+
+  return stringToRegexp(/** @type {string} */ (path), /** @type {!Array} */ (keys), options)
+}
+
+index.parse = parse_1;
+index.compile = compile_1;
+index.tokensToFunction = tokensToFunction_1;
+index.tokensToRegExp = tokensToRegExp_1;
+
+/*  */
+
+var regexpCache = Object.create(null)
+
+function getRouteRegex (path) {
+  var hit = regexpCache[path]
+  var keys, regexp
+
+  if (hit) {
+    keys = hit.keys
+    regexp = hit.regexp
+  } else {
+    keys = []
+    regexp = index(path, keys)
+    regexpCache[path] = { keys: keys, regexp: regexp }
+  }
+
+  return { keys: keys, regexp: regexp }
+}
+
+var regexpCompileCache = Object.create(null)
+
+function fillParams (
+  path,
+  params,
+  routeMsg
+) {
+  try {
+    var filler =
+      regexpCompileCache[path] ||
+      (regexpCompileCache[path] = index.compile(path))
+    return filler(params || {}, { pretty: true })
+  } catch (e) {
+    if (process.env.NODE_ENV !== 'production') {
+      warn(false, ("missing param for " + routeMsg + ": " + (e.message)))
+    }
+    return ''
+  }
+}
+
+/*  */
+
+function normalizeLocation (
+  raw,
+  current,
+  append
+) {
+  var next = typeof raw === 'string' ? { path: raw } : raw
+  // named target
+  if (next.name || next._normalized) {
+    return next
+  }
+
+  // relative params
+  if (!next.path && next.params && current) {
+    next = assign({}, next)
+    next._normalized = true
+    var params = assign(assign({}, current.params), next.params)
+    if (current.name) {
+      next.name = current.name
+      next.params = params
+    } else if (current.matched) {
+      var rawPath = current.matched[current.matched.length - 1].path
+      next.path = fillParams(rawPath, params, ("path " + (current.path)))
+    } else if (process.env.NODE_ENV !== 'production') {
+      warn(false, "relative params navigation requires a current route.")
+    }
+    return next
+  }
+
+  var parsedPath = parsePath(next.path || '')
+  var basePath = (current && current.path) || '/'
+  var path = parsedPath.path
+    ? resolvePath(parsedPath.path, basePath, append || next.append)
+    : (current && current.path) || '/'
+  var query = resolveQuery(parsedPath.query, next.query)
+  var hash = next.hash || parsedPath.hash
+  if (hash && hash.charAt(0) !== '#') {
+    hash = "#" + hash
+  }
+
+  return {
+    _normalized: true,
+    path: path,
+    query: query,
+    hash: hash
+  }
+}
+
+function assign (a, b) {
+  for (var key in b) {
+    a[key] = b[key]
+  }
+  return a
+}
+
+/*  */
+
+function createMatcher (routes) {
+  var ref = createRouteMap(routes);
+  var pathMap = ref.pathMap;
+  var nameMap = ref.nameMap;
+
+  function match (
+    raw,
+    currentRoute,
+    redirectedFrom
+  ) {
+    var location = normalizeLocation(raw, currentRoute)
+    var name = location.name;
+
+    if (name) {
+      var record = nameMap[name]
+      var paramNames = getRouteRegex(record.path).keys
+        .filter(function (key) { return !key.optional; })
+        .map(function (key) { return key.name; })
+
+      if (typeof location.params !== 'object') {
+        location.params = {}
+      }
+
+      if (currentRoute && typeof currentRoute.params === 'object') {
+        for (var key in currentRoute.params) {
+          if (!(key in location.params) && paramNames.indexOf(key) > -1) {
+            location.params[key] = currentRoute.params[key]
+          }
+        }
+      }
+
+      if (record) {
+        location.path = fillParams(record.path, location.params, ("named route \"" + name + "\""))
+        return _createRoute(record, location, redirectedFrom)
+      }
+    } else if (location.path) {
+      location.params = {}
+      for (var path in pathMap) {
+        if (matchRoute(path, location.params, location.path)) {
+          return _createRoute(pathMap[path], location, redirectedFrom)
+        }
+      }
+    }
+    // no match
+    return _createRoute(null, location)
+  }
+
+  function redirect (
+    record,
+    location
+  ) {
+    var originalRedirect = record.redirect
+    var redirect = typeof originalRedirect === 'function'
+        ? originalRedirect(createRoute(record, location))
+        : originalRedirect
+
+    if (typeof redirect === 'string') {
+      redirect = { path: redirect }
+    }
+
+    if (!redirect || typeof redirect !== 'object') {
+      process.env.NODE_ENV !== 'production' && warn(
+        false, ("invalid redirect option: " + (JSON.stringify(redirect)))
+      )
+      return _createRoute(null, location)
+    }
+
+    var re = redirect
+    var name = re.name;
+    var path = re.path;
+    var query = location.query;
+    var hash = location.hash;
+    var params = location.params;
+    query = re.hasOwnProperty('query') ? re.query : query
+    hash = re.hasOwnProperty('hash') ? re.hash : hash
+    params = re.hasOwnProperty('params') ? re.params : params
+
+    if (name) {
+      // resolved named direct
+      var targetRecord = nameMap[name]
+      if (process.env.NODE_ENV !== 'production') {
+        assert(targetRecord, ("redirect failed: named route \"" + name + "\" not found."))
+      }
+      return match({
+        _normalized: true,
+        name: name,
+        query: query,
+        hash: hash,
+        params: params
+      }, undefined, location)
+    } else if (path) {
+      // 1. resolve relative redirect
+      var rawPath = resolveRecordPath(path, record)
+      // 2. resolve params
+      var resolvedPath = fillParams(rawPath, params, ("redirect route with path \"" + rawPath + "\""))
+      // 3. rematch with existing query and hash
+      return match({
+        _normalized: true,
+        path: resolvedPath,
+        query: query,
+        hash: hash
+      }, undefined, location)
+    } else {
+      warn(false, ("invalid redirect option: " + (JSON.stringify(redirect))))
+      return _createRoute(null, location)
+    }
+  }
+
+  function alias (
+    record,
+    location,
+    matchAs
+  ) {
+    var aliasedPath = fillParams(matchAs, location.params, ("aliased route with path \"" + matchAs + "\""))
+    var aliasedMatch = match({
+      _normalized: true,
+      path: aliasedPath
+    })
+    if (aliasedMatch) {
+      var matched = aliasedMatch.matched
+      var aliasedRecord = matched[matched.length - 1]
+      location.params = aliasedMatch.params
+      return _createRoute(aliasedRecord, location)
+    }
+    return _createRoute(null, location)
+  }
+
+  function _createRoute (
+    record,
+    location,
+    redirectedFrom
+  ) {
+    if (record && record.redirect) {
+      return redirect(record, redirectedFrom || location)
+    }
+    if (record && record.matchAs) {
+      return alias(record, location, record.matchAs)
+    }
+    return createRoute(record, location, redirectedFrom)
+  }
+
+  return match
+}
+
+function matchRoute (
+  path,
+  params,
+  pathname
+) {
+  var ref = getRouteRegex(path);
+  var regexp = ref.regexp;
+  var keys = ref.keys;
+  var m = pathname.match(regexp)
+
+  if (!m) {
+    return false
+  } else if (!params) {
+    return true
+  }
+
+  for (var i = 1, len = m.length; i < len; ++i) {
+    var key = keys[i - 1]
+    var val = typeof m[i] === 'string' ? decodeURIComponent(m[i]) : m[i]
+    if (key) { params[key.name] = val }
+  }
+
+  return true
+}
+
+function resolveRecordPath (path, record) {
+  return resolvePath(path, record.parent ? record.parent.path : '/', true)
+}
+
+/*  */
+
+var inBrowser = typeof window !== 'undefined'
+
+var supportsHistory = inBrowser && (function () {
+  var ua = window.navigator.userAgent
+
+  if (
+    (ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) &&
+    ua.indexOf('Mobile Safari') !== -1 &&
+    ua.indexOf('Chrome') === -1 &&
+    ua.indexOf('Windows Phone') === -1
+  ) {
+    return false
+  }
+
+  return window.history && 'pushState' in window.history
+})()
+
+/*  */
+
+function runQueue (queue, fn, cb) {
+  var step = function (index) {
+    if (index >= queue.length) {
+      cb()
+    } else {
+      if (queue[index]) {
+        fn(queue[index], function () {
+          step(index + 1)
+        })
+      } else {
+        step(index + 1)
+      }
+    }
+  }
+  step(0)
+}
+
+/*  */
+
+
+var History = function History (router, base) {
+  this.router = router
+  this.base = normalizeBase(base)
+  // start with a route object that stands for "nowhere"
+  this.current = START
+  this.pending = null
+};
+
+History.prototype.listen = function listen (cb) {
+  this.cb = cb
+};
+
+History.prototype.transitionTo = function transitionTo (location, onComplete, onAbort) {
+    var this$1 = this;
+
+  var route = this.router.match(location, this.current)
+  this.confirmTransition(route, function () {
+    this$1.updateRoute(route)
+    onComplete && onComplete(route)
+    this$1.ensureURL()
+  }, onAbort)
+};
+
+History.prototype.confirmTransition = function confirmTransition (route, onComplete, onAbort) {
+    var this$1 = this;
+
+  var current = this.current
+  var abort = function () { onAbort && onAbort() }
+  if (isSameRoute(route, current)) {
+    this.ensureURL()
+    return abort()
+  }
+
+  var ref = resolveQueue(this.current.matched, route.matched);
+    var deactivated = ref.deactivated;
+    var activated = ref.activated;
+
+  var queue = [].concat(
+    // in-component leave guards
+    extractLeaveGuards(deactivated),
+    // global before hooks
+    this.router.beforeHooks,
+    // enter guards
+    activated.map(function (m) { return m.beforeEnter; }),
+    // async components
+    resolveAsyncComponents(activated)
+  )
+
+  this.pending = route
+  var iterator = function (hook, next) {
+    if (this$1.pending !== route) {
+      return abort()
+    }
+    hook(route, current, function (to) {
+      if (to === false) {
+        // next(false) -> abort navigation, ensure current URL
+        this$1.ensureURL(true)
+        abort()
+      } else if (typeof to === 'string' || typeof to === 'object') {
+        // next('/') or next({ path: '/' }) -> redirect
+        (typeof to === 'object' && to.replace) ? this$1.replace(to) : this$1.push(to)
+        abort()
+      } else {
+        // confirm transition and pass on the value
+        next(to)
+      }
+    })
+  }
+
+  runQueue(queue, iterator, function () {
+    var postEnterCbs = []
+    var enterGuards = extractEnterGuards(activated, postEnterCbs, function () {
+      return this$1.current === route
+    })
+    // wait until async components are resolved before
+    // extracting in-component enter guards
+    runQueue(enterGuards, iterator, function () {
+      if (this$1.pending !== route) {
+        return abort()
+      }
+      this$1.pending = null
+      onComplete(route)
+      if (this$1.router.app) {
+        this$1.router.app.$nextTick(function () {
+          postEnterCbs.forEach(function (cb) { return cb(); })
+        })
+      }
+    })
+  })
+};
+
+History.prototype.updateRoute = function updateRoute (route) {
+  var prev = this.current
+  this.current = route
+  this.cb && this.cb(route)
+  this.router.afterHooks.forEach(function (hook) {
+    hook && hook(route, prev)
+  })
+};
+
+function normalizeBase (base) {
+  if (!base) {
+    if (inBrowser) {
+      // respect <base> tag
+      var baseEl = document.querySelector('base')
+      base = baseEl ? baseEl.getAttribute('href') : '/'
+    } else {
+      base = '/'
+    }
+  }
+  // make sure there's the starting slash
+  if (base.charAt(0) !== '/') {
+    base = '/' + base
+  }
+  // remove trailing slash
+  return base.replace(/\/$/, '')
+}
+
+function resolveQueue (
+  current,
+  next
+) {
+  var i
+  var max = Math.max(current.length, next.length)
+  for (i = 0; i < max; i++) {
+    if (current[i] !== next[i]) {
+      break
+    }
+  }
+  return {
+    activated: next.slice(i),
+    deactivated: current.slice(i)
+  }
+}
+
+function extractGuard (
+  def,
+  key
+) {
+  if (typeof def !== 'function') {
+    // extend now so that global mixins are applied.
+    def = _Vue.extend(def)
+  }
+  return def.options[key]
+}
+
+function extractLeaveGuards (matched) {
+  return flatten(flatMapComponents(matched, function (def, instance) {
+    var guard = extractGuard(def, 'beforeRouteLeave')
+    if (guard) {
+      return Array.isArray(guard)
+        ? guard.map(function (guard) { return wrapLeaveGuard(guard, instance); })
+        : wrapLeaveGuard(guard, instance)
+    }
+  }).reverse())
+}
+
+function wrapLeaveGuard (
+  guard,
+  instance
+) {
+  return function routeLeaveGuard () {
+    return guard.apply(instance, arguments)
+  }
+}
+
+function extractEnterGuards (
+  matched,
+  cbs,
+  isValid
+) {
+  return flatten(flatMapComponents(matched, function (def, _, match, key) {
+    var guard = extractGuard(def, 'beforeRouteEnter')
+    if (guard) {
+      return Array.isArray(guard)
+        ? guard.map(function (guard) { return wrapEnterGuard(guard, cbs, match, key, isValid); })
+        : wrapEnterGuard(guard, cbs, match, key, isValid)
+    }
+  }))
+}
+
+function wrapEnterGuard (
+  guard,
+  cbs,
+  match,
+  key,
+  isValid
+) {
+  return function routeEnterGuard (to, from, next) {
+    return guard(to, from, function (cb) {
+      next(cb)
+      if (typeof cb === 'function') {
+        cbs.push(function () {
+          // #750
+          // if a router-view is wrapped with an out-in transition,
+          // the instance may not have been registered at this time.
+          // we will need to poll for registration until current route
+          // is no longer valid.
+          poll(cb, match.instances, key, isValid)
+        })
+      }
+    })
+  }
+}
+
+function poll (
+  cb, // somehow flow cannot infer this is a function
+  instances,
+  key,
+  isValid
+) {
+  if (instances[key]) {
+    cb(instances[key])
+  } else if (isValid()) {
+    setTimeout(function () {
+      poll(cb, instances, key, isValid)
+    }, 16)
+  }
+}
+
+function resolveAsyncComponents (matched) {
+  return flatMapComponents(matched, function (def, _, match, key) {
+    // if it's a function and doesn't have Vue options attached,
+    // assume it's an async component resolve function.
+    // we are not using Vue's default async resolving mechanism because
+    // we want to halt the navigation until the incoming component has been
+    // resolved.
+    if (typeof def === 'function' && !def.options) {
+      return function (to, from, next) {
+        var resolve = function (resolvedDef) {
+          match.components[key] = resolvedDef
+          next()
+        }
+
+        var reject = function (reason) {
+          warn(false, ("Failed to resolve async component " + key + ": " + reason))
+          next(false)
+        }
+
+        var res = def(resolve, reject)
+        if (res && typeof res.then === 'function') {
+          res.then(resolve, reject)
+        }
+      }
+    }
+  })
+}
+
+function flatMapComponents (
+  matched,
+  fn
+) {
+  return flatten(matched.map(function (m) {
+    return Object.keys(m.components).map(function (key) { return fn(
+      m.components[key],
+      m.instances[key],
+      m, key
+    ); })
+  }))
+}
+
+function flatten (arr) {
+  return Array.prototype.concat.apply([], arr)
+}
+
+/*  */
+
+var positionStore = Object.create(null)
+
+function saveScrollPosition (key) {
+  if (!key) { return }
+  positionStore[key] = {
+    x: window.pageXOffset,
+    y: window.pageYOffset
+  }
+}
+
+function getScrollPosition (key) {
+  if (!key) { return }
+  return positionStore[key]
+}
+
+function getElementPosition (el) {
+  var docRect = document.documentElement.getBoundingClientRect()
+  var elRect = el.getBoundingClientRect()
+  return {
+    x: elRect.left - docRect.left,
+    y: elRect.top - docRect.top
+  }
+}
+
+function isValidPosition (obj) {
+  return isNumber(obj.x) || isNumber(obj.y)
+}
+
+function normalizePosition (obj) {
+  return {
+    x: isNumber(obj.x) ? obj.x : window.pageXOffset,
+    y: isNumber(obj.y) ? obj.y : window.pageYOffset
+  }
+}
+
+function isNumber (v) {
+  return typeof v === 'number'
+}
+
+/*  */
+
+
+var genKey = function () { return String(Date.now()); }
+var _key = genKey()
+
+var HTML5History = (function (History) {
+  function HTML5History (router, base) {
+    var this$1 = this;
+
+    History.call(this, router, base)
+
+    var expectScroll = router.options.scrollBehavior
+    window.addEventListener('popstate', function (e) {
+      _key = e.state && e.state.key
+      var current = this$1.current
+      this$1.transitionTo(getLocation(this$1.base), function (next) {
+        if (expectScroll) {
+          this$1.handleScroll(next, current, true)
+        }
+      })
+    })
+
+    if (expectScroll) {
+      window.addEventListener('scroll', function () {
+        saveScrollPosition(_key)
+      })
+    }
+  }
+
+  if ( History ) HTML5History.__proto__ = History;
+  HTML5History.prototype = Object.create( History && History.prototype );
+  HTML5History.prototype.constructor = HTML5History;
+
+  HTML5History.prototype.go = function go (n) {
+    window.history.go(n)
+  };
+
+  HTML5History.prototype.push = function push (location) {
+    var this$1 = this;
+
+    var current = this.current
+    this.transitionTo(location, function (route) {
+      pushState(cleanPath(this$1.base + route.fullPath))
+      this$1.handleScroll(route, current, false)
+    })
+  };
+
+  HTML5History.prototype.replace = function replace (location) {
+    var this$1 = this;
+
+    var current = this.current
+    this.transitionTo(location, function (route) {
+      replaceState(cleanPath(this$1.base + route.fullPath))
+      this$1.handleScroll(route, current, false)
+    })
+  };
+
+  HTML5History.prototype.ensureURL = function ensureURL (push) {
+    if (getLocation(this.base) !== this.current.fullPath) {
+      var current = cleanPath(this.base + this.current.fullPath)
+      push ? pushState(current) : replaceState(current)
+    }
+  };
+
+  HTML5History.prototype.handleScroll = function handleScroll (to, from, isPop) {
+    var router = this.router
+    if (!router.app) {
+      return
+    }
+
+    var behavior = router.options.scrollBehavior
+    if (!behavior) {
+      return
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      assert(typeof behavior === 'function', "scrollBehavior must be a function")
+    }
+
+    // wait until re-render finishes before scrolling
+    router.app.$nextTick(function () {
+      var position = getScrollPosition(_key)
+      var shouldScroll = behavior(to, from, isPop ? position : null)
+      if (!shouldScroll) {
+        return
+      }
+      var isObject = typeof shouldScroll === 'object'
+      if (isObject && typeof shouldScroll.selector === 'string') {
+        var el = document.querySelector(shouldScroll.selector)
+        if (el) {
+          position = getElementPosition(el)
+        } else if (isValidPosition(shouldScroll)) {
+          position = normalizePosition(shouldScroll)
+        }
+      } else if (isObject && isValidPosition(shouldScroll)) {
+        position = normalizePosition(shouldScroll)
+      }
+
+      if (position) {
+        window.scrollTo(position.x, position.y)
+      }
+    })
+  };
+
+  return HTML5History;
+}(History));
+
+function getLocation (base) {
+  var path = window.location.pathname
+  if (base && path.indexOf(base) === 0) {
+    path = path.slice(base.length)
+  }
+  return (path || '/') + window.location.search + window.location.hash
+}
+
+function pushState (url, replace) {
+  // try...catch the pushState call to get around Safari
+  // DOM Exception 18 where it limits to 100 pushState calls
+  var history = window.history
+  try {
+    if (replace) {
+      history.replaceState({ key: _key }, '', url)
+    } else {
+      _key = genKey()
+      history.pushState({ key: _key }, '', url)
+    }
+    saveScrollPosition(_key)
+  } catch (e) {
+    window.location[replace ? 'assign' : 'replace'](url)
+  }
+}
+
+function replaceState (url) {
+  pushState(url, true)
+}
+
+/*  */
+
+
+var HashHistory = (function (History) {
+  function HashHistory (router, base, fallback) {
+    History.call(this, router, base)
+    // check history fallback deeplinking
+    if (fallback && this.checkFallback()) {
+      return
+    }
+    ensureSlash()
+  }
+
+  if ( History ) HashHistory.__proto__ = History;
+  HashHistory.prototype = Object.create( History && History.prototype );
+  HashHistory.prototype.constructor = HashHistory;
+
+  HashHistory.prototype.checkFallback = function checkFallback () {
+    var location = getLocation(this.base)
+    if (!/^\/#/.test(location)) {
+      window.location.replace(
+        cleanPath(this.base + '/#' + location)
+      )
+      return true
+    }
+  };
+
+  HashHistory.prototype.onHashChange = function onHashChange () {
+    if (!ensureSlash()) {
+      return
+    }
+    this.transitionTo(getHash(), function (route) {
+      replaceHash(route.fullPath)
+    })
+  };
+
+  HashHistory.prototype.push = function push (location) {
+    this.transitionTo(location, function (route) {
+      pushHash(route.fullPath)
+    })
+  };
+
+  HashHistory.prototype.replace = function replace (location) {
+    this.transitionTo(location, function (route) {
+      replaceHash(route.fullPath)
+    })
+  };
+
+  HashHistory.prototype.go = function go (n) {
+    window.history.go(n)
+  };
+
+  HashHistory.prototype.ensureURL = function ensureURL (push) {
+    var current = this.current.fullPath
+    if (getHash() !== current) {
+      push ? pushHash(current) : replaceHash(current)
+    }
+  };
+
+  return HashHistory;
+}(History));
+
+function ensureSlash () {
+  var path = getHash()
+  if (path.charAt(0) === '/') {
+    return true
+  }
+  replaceHash('/' + path)
+  return false
+}
+
+function getHash () {
+  // We can't use window.location.hash here because it's not
+  // consistent across browsers - Firefox will pre-decode it!
+  var href = window.location.href
+  var index = href.indexOf('#')
+  return index === -1 ? '' : href.slice(index + 1)
+}
+
+function pushHash (path) {
+  window.location.hash = path
+}
+
+function replaceHash (path) {
+  var i = window.location.href.indexOf('#')
+  window.location.replace(
+    window.location.href.slice(0, i >= 0 ? i : 0) + '#' + path
+  )
+}
+
+/*  */
+
+
+var AbstractHistory = (function (History) {
+  function AbstractHistory (router) {
+    History.call(this, router)
+    this.stack = []
+    this.index = -1
+  }
+
+  if ( History ) AbstractHistory.__proto__ = History;
+  AbstractHistory.prototype = Object.create( History && History.prototype );
+  AbstractHistory.prototype.constructor = AbstractHistory;
+
+  AbstractHistory.prototype.push = function push (location) {
+    var this$1 = this;
+
+    this.transitionTo(location, function (route) {
+      this$1.stack = this$1.stack.slice(0, this$1.index + 1).concat(route)
+      this$1.index++
+    })
+  };
+
+  AbstractHistory.prototype.replace = function replace (location) {
+    var this$1 = this;
+
+    this.transitionTo(location, function (route) {
+      this$1.stack = this$1.stack.slice(0, this$1.index).concat(route)
+    })
+  };
+
+  AbstractHistory.prototype.go = function go (n) {
+    var this$1 = this;
+
+    var targetIndex = this.index + n
+    if (targetIndex < 0 || targetIndex >= this.stack.length) {
+      return
+    }
+    var route = this.stack[targetIndex]
+    this.confirmTransition(route, function () {
+      this$1.index = targetIndex
+      this$1.updateRoute(route)
+    })
+  };
+
+  AbstractHistory.prototype.ensureURL = function ensureURL () {
+    // noop
+  };
+
+  return AbstractHistory;
+}(History));
+
+/*  */
+
+var VueRouter = function VueRouter (options) {
+  if ( options === void 0 ) options = {};
+
+  this.app = null
+  this.options = options
+  this.beforeHooks = []
+  this.afterHooks = []
+  this.match = createMatcher(options.routes || [])
+
+  var mode = options.mode || 'hash'
+  this.fallback = mode === 'history' && !supportsHistory
+  if (this.fallback) {
+    mode = 'hash'
+  }
+  if (!inBrowser) {
+    mode = 'abstract'
+  }
+  this.mode = mode
+
+  switch (mode) {
+    case 'history':
+      this.history = new HTML5History(this, options.base)
+      break
+    case 'hash':
+      this.history = new HashHistory(this, options.base, this.fallback)
+      break
+    case 'abstract':
+      this.history = new AbstractHistory(this)
+      break
+    default:
+      process.env.NODE_ENV !== 'production' && assert(false, ("invalid mode: " + mode))
+  }
+};
+
+var prototypeAccessors = { currentRoute: {} };
+
+prototypeAccessors.currentRoute.get = function () {
+  return this.history && this.history.current
+};
+
+VueRouter.prototype.init = function init (app /* Vue component instance */) {
+    var this$1 = this;
+
+  process.env.NODE_ENV !== 'production' && assert(
+    install.installed,
+    "not installed. Make sure to call `Vue.use(VueRouter)` " +
+    "before creating root instance."
+  )
+
+  this.app = app
+
+  var history = this.history
+
+  if (history instanceof HTML5History) {
+    history.transitionTo(getLocation(history.base))
+  } else if (history instanceof HashHistory) {
+    var setupHashListener = function () {
+      window.addEventListener('hashchange', function () {
+        history.onHashChange()
+      })
+    }
+    history.transitionTo(getHash(), setupHashListener, setupHashListener)
+  }
+
+  history.listen(function (route) {
+    this$1.app._route = route
+  })
+};
+
+VueRouter.prototype.beforeEach = function beforeEach (fn) {
+  this.beforeHooks.push(fn)
+};
+
+VueRouter.prototype.afterEach = function afterEach (fn) {
+  this.afterHooks.push(fn)
+};
+
+VueRouter.prototype.push = function push (location) {
+  this.history.push(location)
+};
+
+VueRouter.prototype.replace = function replace (location) {
+  this.history.replace(location)
+};
+
+VueRouter.prototype.go = function go (n) {
+  this.history.go(n)
+};
+
+VueRouter.prototype.back = function back () {
+  this.go(-1)
+};
+
+VueRouter.prototype.forward = function forward () {
+  this.go(1)
+};
+
+VueRouter.prototype.getMatchedComponents = function getMatchedComponents (to) {
+  var route = to
+    ? this.resolve(to).resolved
+    : this.currentRoute
+  if (!route) {
+    return []
+  }
+  return [].concat.apply([], route.matched.map(function (m) {
+    return Object.keys(m.components).map(function (key) {
+      return m.components[key]
+    })
+  }))
+};
+
+VueRouter.prototype.resolve = function resolve (
+  to,
+  current,
+  append
+) {
+  var normalizedTo = normalizeLocation(to, current || this.history.current, append)
+  var resolved = this.match(normalizedTo, current)
+  var fullPath = resolved.redirectedFrom || resolved.fullPath
+  var base = this.history.base
+  var href = createHref(base, fullPath, this.mode)
+  return {
+    normalizedTo: normalizedTo,
+    resolved: resolved,
+    href: href
+  }
+};
+
+Object.defineProperties( VueRouter.prototype, prototypeAccessors );
+
+function createHref (base, fullPath, mode) {
+  var path = mode === 'hash' ? '#' + fullPath : fullPath
+  return base ? cleanPath(base + '/' + path) : path
+}
+
+VueRouter.install = install
+
+if (inBrowser && window.Vue) {
+  window.Vue.use(VueRouter)
+}
+
+module.exports = VueRouter;
+}).call(this,require('_process'))
+},{"_process":37}],41:[function(require,module,exports){
 (function (process,global){
 /*!
  * Vue.js v2.1.8
@@ -27607,7 +30006,7 @@ Vue$3.compile = compileToFunctions;
 module.exports = Vue$3;
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":2}],6:[function(require,module,exports){
+},{"_process":37}],42:[function(require,module,exports){
 'use strict';
 
 /**
@@ -27621,7 +30020,6 @@ window.url_rootDIR = url_protocol + '//' + url_host + url_rootPath;
 window.timezone = jstz.determine().name();
 window.offset = moment().tz(timezone).format('Z').split(':')[0];
 window.datetime = moment().tz(timezone).format();
-
 window._ = require('lodash');
 
 /**
@@ -27632,6 +30030,8 @@ window._ = require('lodash');
 
 window.Vue = require('vue');
 Vue.use(require('vue-resource'));
+window.VueRouter = require('vue-router');
+Vue.use(window.VueRouter);
 
 /**
  * We'll register a HTTP interceptor to attach the "CSRF" header to each of
@@ -27664,7 +30064,2539 @@ window.Laravel = { csrfToken: $('meta[name="csrf-token"]').attr('content') };
 //     key: 'your-pusher-key'
 // });
 
-},{"lodash":1,"vue":5,"vue-resource":4}],7:[function(require,module,exports){
+},{"lodash":36,"vue":41,"vue-resource":39,"vue-router":40}],43:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+
+var addUser = require('../components/Academics/Add.vue');
+var viewUser = require('../components/Academics/View.vue');
+var editUser = require('../components/Academics/Edit.vue');
+var deleteUser = require('../components/Academics/Delete.vue');
+
+exports.default = {
+
+    parent: Dashboard.app,
+
+    props: ['breadcrumbs'],
+
+    data: function data() {
+        return {
+
+            root_url: window.url_rootDIR,
+            resource: this.$resource('acad{/user_id}'),
+            cur_breadcrumbs: { name: 'Academics - View Teachers', icon: 'star' },
+            userroles: {},
+            users: [],
+            tableInfo: [],
+            pages: [],
+            showRows: 10,
+            searchQuery: '',
+            columns: [{ columnName: 'Role', columnValue: 'role_id' }, { columnName: 'Status', columnValue: 'active' }, { columnName: 'User ID', columnValue: 'user_id' }, { columnName: 'Fullname', columnValue: 'staffs.firstname' }, { columnName: 'Username', columnValue: 'username' }, { columnName: 'Email Address', columnValue: 'staffs.email_address' }],
+            sortColumn: '',
+            sortOrder: 0
+
+        };
+    },
+
+
+    components: {
+        'addUser': addUser,
+        'viewUser': viewUser,
+        'editUser': editUser,
+        'deleteUser': deleteUser
+    },
+
+    watch: {
+        'showRows': function showRows() {
+            this.fetchUsers('');
+        }
+    },
+
+    methods: {
+        searchUser: function searchUser(user) {
+            return String(user.user_id).indexOf(this.searchQuery) != -1 || user.roles.role_name.toLowerCase().indexOf(this.searchQuery) != -1 || user.username.toLowerCase().indexOf(this.searchQuery) != -1 || user.staffs.firstname.toLowerCase().indexOf(this.searchQuery) != -1 || user.staffs.lastname.toLowerCase().indexOf(this.searchQuery) != -1 || user.staffs.email_address.toLowerCase().indexOf(this.searchQuery) != -1;
+        },
+        fetchRoles: function fetchRoles() {
+            var _this = this;
+
+            // Fetch user roles
+            this.resource.get({ id: 1 }).then(function (response) {
+                _this.$set('userroles', response.json());
+            });
+        },
+        fetchUsers: function fetchUsers(page) {
+            var _this2 = this;
+
+            // Clear users variable
+            this.users = [];
+            // Clear sorting
+            this.sortColumn = '';
+            // Retrieve users
+            this.$http.get('acad/list/' + this.showRows + page).then(function (response) {
+                _this2.$set('users', response.data.user);
+                _this2.$set('tableInfo', {
+                    firstItem: response.data.firstItem,
+                    lastItem: response.data.lastItem,
+                    total: response.data.total
+                });
+                _this2.getPagination();
+            });
+        },
+        addUser: function addUser() {
+            $('.add-user-modal').fadeIn();
+        },
+        viewUser: function viewUser(user) {
+            $('.view-user-modal').fadeIn();
+            this.$broadcast('callFetchUserView', user);
+        },
+        editUser: function editUser(user) {
+            $('.edit-user-modal').fadeIn();
+            this.$broadcast('callFetchUserEdit', user);
+        },
+        deleteUser: function deleteUser(user) {
+            $('.delete-user-modal').fadeIn();
+            this.$broadcast('callFetchUserDelete', user, true);
+        },
+        restoreUser: function restoreUser(user) {
+            $('.delete-user-modal').fadeIn();
+            this.$broadcast('callFetchUserDelete', user, false);
+        },
+        getPagination: function getPagination() {
+            var link_limit = 7;
+
+            // Clear pages array
+            this.pages = [];
+
+            // Set pages
+            if (this.users.last_page > 1) {
+                for (var i = 1; i <= this.users.last_page; i++) {
+                    var half_total_links = _.floor(link_limit / 2);
+                    var from = this.users.current_page - half_total_links;
+                    var to = this.users.current_page + half_total_links;
+
+                    if (this.users.current_page < half_total_links) {
+                        to += half_total_links - this.users.current_page;
+                    }
+                    if (this.users.last_page - this.users.current_page < half_total_links) {
+                        from -= half_total_links - (this.users.last_page - this.users.current_page) - 1;
+                    }
+                    if (from < i && to > i) {
+                        this.pages.push(i);
+                    }
+                }
+            }
+        },
+        sortBy: function sortBy() {
+            this.sortOrder = this.sortOrder == -1 ? 0 : -1;
+        }
+    },
+
+    events: {
+        callFetchUsers: function callFetchUsers() {
+            this.fetchUsers('');
+        }
+    },
+
+    ready: function ready() {
+
+        this.breadcrumbs = this.cur_breadcrumbs;
+
+        // Enable dropdowns
+        $('.ui.dropdown').dropdown();
+
+        // Fetch user roles
+        this.fetchRoles();
+
+        // Fetch users
+        this.fetchUsers('');
+
+        // Enable dropdown
+        $('.record-count').dropdown();
+
+        // Hide modals
+        $('.user-modal').hide();
+
+        $(".dashboard-right .body-right .general-body.content .content-body").mCustomScrollbar({
+            scrollButtons: { enable: true },
+            theme: "dark-3",
+            scrollbarPosition: "inside",
+            mouseWheel: { enable: true }
+        });
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"ui segment override wrapper general-body content\">\n    <div class=\"ui segment override header content-header\">\n        <div class=\"header-title\">\n            <i class=\"star icon\"></i>\n            <div class=\"title\">Academics</div>\n        </div>\n        <div class=\"header-actions\">\n            <button class=\"ui mini teal button overrides default override text-button\" @click=\"addUser\">\n                Create User\n            </button>\n        </div>\n    </div>\n\n    <!-- admin Table -->\n    <div class=\"ui segment loaders general-body-content content-body\">\n        <div class=\"ui inverted dimmer\" :class=\"{ 'active':  users.length == 0}\">\n            <div class=\"ui text loader\">Loading</div>\n        </div>\n        <div class=\"content-body-form\">\n            <small>Note: You can search for an ID, Name, Username, Email or Role.</small>\n            <div class=\"search-options\">\n                <button class=\"ui icon button white override icon-only\" @click=\"fetchUsers('')\">\n                    <i class=\"refresh icon\"></i>\n                </button>\n                <div class=\"ui input custom-border\">\n                    <input placeholder=\"Search...\" type=\"text\" class=\"search-input\" v-model=\"searchQuery\">\n                </div>\n                <div class=\"ui icon top right pointing dropdown button teal override icon-only record-count\">\n                    <i class=\"options icon\"></i>\n                    <div class=\"menu\">\n                        <div class=\"header\">Other Options</div>\n                        <div class=\"divider\"></div>\n                        <div class=\"ui search input\">\n                            <label>Show rows:</label>\n                            <select v-model=\"showRows\">\n                                <option value=\"10\">10</option>\n                                <option value=\"20\">20</option>\n                                <option value=\"30\">30</option>\n                                <option value=\"40\">40</option>\n                                <option value=\"50\">50</option>\n                                <option value=\"60\">60</option>\n                                <option value=\"70\">70</option>\n                                <option value=\"80\">80</option>\n                                <option value=\"90\">90</option>\n                                <option value=\"100\">100</option>\n                            </select>\n                        </div>\n                        <div class=\"divider\"></div>\n                        <div class=\"ui search input sortby\">\n                            <label>Sort by:</label>\n                            <select v-model=\"sortColumn\">\n                                <option v-for=\"col in columns\" :value=\"col.columnValue\" @click=\"sortBy\">{{ col.columnName }}</option>\n                            </select>\n                        </div>\n                        <div class=\"item\"></div>\n                    </div>\n                </div>\n            </div>\n            <table class=\"ui small very basic table override\">\n                <thead>\n                    <tr>\n                        <th class=\"center aligned\">Status</th>\n                        <th class=\"center aligned\">#</th>\n                        <th>Name</th>\n                        <th>Role</th>\n                        <th>Username</th>\n                        <th>Email Address</th>\n                        <th>Actions</th>\n                    </tr>\n                </thead>\n                <tbody>\n                    <tr v-for=\"user in users.data\n                        | filterBy searchUser\n                        | orderBy sortColumn sortOrder\n                        | orderBy active 0\n                    \">\n                        <td class=\"collapsing center aligned\">\n                            <i class=\"check icon green td-status\" v-if=\"user.active == 1\"></i>\n                            <i class=\"remove icon red td-status\" v-if=\"user.active != 1\"></i>\n                        </td>\n                        <td class=\"collapsing\">\n                            <small><div class=\"ui horizontal label override number\">{{ user.user_id }}</div></small>\n                        </td>\n                        <td>\n                            <h4 class=\"ui image header override\">\n                                <img :src=\"root_url + 'images/profile_images/' + user.staffs.photo\" class=\"ui mini circular image\">\n                                <div class=\"content\">\n                                    <span>{{ user.staffs.firstname }} {{ user.staffs.lastname }}</span>\n                                    <div class=\"sub header\">\n                                        <small>Created {{ user.created_at | moments \"MM.DD.YYYY\"}}</small>\n                                    </div>\n                                </div>\n                            </h4>\n                        </td>\n                        <td>\n                            <span>{{ user.roles.role_name }}</span>\n                        </td>\n                        <td>\n                            <span><i class=\"user icon\"></i> {{ user.username }}</span>\n                        </td>\n                        <td>\n                            <span><i class=\"mail icon\"></i> {{ user.staffs.email_address }}</span>\n                        </td>\n                        <td class=\"collapsing\">\n                            <div class=\"ui buttons btn-actions\">\n                                <button class=\"ui icon button mini\" @click=\"viewUser(user)\" title=\"View\">\n                                    <i class=\"search icon\"></i>\n                                </button>\n                                <button class=\"ui icon button mini\" @click=\"editUser(user)\" title=\"Edit\">\n                                    <i class=\"edit icon\"></i>\n                                </button>\n                                <button v-if=\"user.active != 0\" class=\"ui icon button mini\" @click=\"deleteUser(user)\" title=\"Delete\">\n                                    <i class=\"trash icon\"></i>\n                                </button>\n                                <button v-if=\"user.active == 0\" class=\"ui icon button mini\" @click=\"restoreUser(user)\" title=\"Restore\">\n                                    <i class=\"refresh icon\"></i>\n                                </button>\n                            </div>\n                        </td>\n                    </tr>\n                </tbody>\n            </table>\n        </div>\n    </div>\n    <div class=\"pagination-wrapper\">\n        <label>Showing {{ tableInfo.firstItem }} to {{ tableInfo.lastItem }} of {{ tableInfo.total }} entries</label>\n        <div class=\"ui pagination menu override default\" v-show=\"pages.length > 0\">\n            <a class=\"icon item\" :class=\"{ 'disabled': users.current_page == 1 }\" @click.prevent=\"fetchUsers('?page=1')\">\n                <i class=\"left chevron icon\"></i>\n            </a>\n            <a class=\"item\" v-for=\"page in pages\" :class=\"{ 'active': users.current_page == page }\" @click.prevent=\"fetchUsers('?page=' + page)\">\n                {{ page }}\n            </a>\n            <a class=\"icon item\" :class=\"{ 'disabled': users.current_page == users.last_page }\" @click.prevent=\"fetchUsers('?page=' + users.last_page)\">\n                <i class=\"right chevron icon\"></i>\n            </a>\n        </div>\n    </div>\n</div>\n\n<!-- Account Modals -->\n<view-user :root_url=\"root_url\"></view-user>\n<add-user :root_url=\"root_url\" :resource=\"resource\" :userroles=\"userroles\"></add-user>\n<edit-user :root_url=\"root_url\" :resource=\"resource\" :userroles=\"userroles\"></edit-user>\n<delete-user :root_url=\"root_url\" :resource=\"resource\"></delete-user>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-2236cc76", module.exports)
+  } else {
+    hotAPI.update("_v-2236cc76", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"../components/Academics/Add.vue":44,"../components/Academics/Delete.vue":45,"../components/Academics/Edit.vue":46,"../components/Academics/View.vue":47,"vue":41,"vue-hot-reload-api":38}],44:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _keys = require('babel-runtime/core-js/object/keys');
+
+var _keys2 = _interopRequireDefault(_keys);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var emailRE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url', 'resource', 'userroles'],
+
+    data: function data() {
+        return {
+
+            showCaptureBtn: true,
+            showCamera: false,
+            showLoading: false,
+            showError: false,
+            newUser: {
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                password: '',
+                c_password: '',
+                role_id: 0,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            }
+
+        };
+    },
+
+
+    computed: {
+        validation: function validation() {
+            return {
+                firstname: !!this.newUser.firstname.trim(),
+                lastname: !!this.newUser.lastname.trim(),
+                email_empty: !!this.newUser.email_address.trim(),
+                email_check: emailRE.test(this.newUser.email_address),
+                username: !!this.newUser.username.trim(),
+                password: !!this.newUser.password.trim(),
+                c_password: !!this.newUser.c_password.trim(),
+                pass_mismatch: this.newUser.c_password.trim() != this.newUser.password.trim() ? false : true
+            };
+        },
+        isValid: function isValid() {
+            var validation = this.validation;
+            return (0, _keys2.default)(validation).every(function (key) {
+                return validation[key];
+            });
+        }
+    },
+
+    watch: {
+        'userroles': function userroles() {
+            var self = this;
+            setTimeout(function () {
+                $('.ui.dropdown').dropdown('set selected', self.userroles[0].role_id);
+            }, 100);
+        }
+    },
+
+    methods: {
+        /*** Profile Photo ***/
+        // Webcamera methods
+        startVideoCamera: function startVideoCamera() {
+            Webcam.set({
+                width: 320, height: 240,
+                dest_width: 320, dest_height: 240,
+                crop_width: 240, crop_height: 240,
+                image_format: 'jpeg', jpeg_quality: 90,
+                flip_horiz: true
+            });
+            Webcam.attach('#video-camera-add');
+        },
+        takeSnapshot: function takeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.freeze();
+        },
+        retakeSnapshot: function retakeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.unfreeze();
+        },
+        closeCamera: function closeCamera() {
+            this.showCamera = false;
+            Webcam.reset();
+        },
+        openCamera: function openCamera() {
+            this.startVideoCamera();
+            this.showCamera = true;
+        },
+        setCameraImage: function setCameraImage() {
+            var self = this;
+            Webcam.snap(function (image_uri) {
+                self.newUser.imageURI.src = image_uri;
+                self.newUser.imageURI.name = moment().format('x') + '.jpg';
+                self.retakeSnapshot();
+                self.closeCamera();
+            });
+        },
+
+        // Upload Image Methods
+        selectPhotoUpload: function selectPhotoUpload() {
+            this.$els.uploadPhoto.click();
+        },
+
+        setUploadedImage: function setUploadedImage(event) {
+            var input = event.target.files[0];
+            var reader = new FileReader();
+            var self = this;
+            reader.onload = function (e) {
+                self.newUser.imageURI.src = e.target.result;
+            };
+            self.newUser.imageURI.name = input.name;
+            reader.readAsDataURL(input);
+        },
+
+        disposeResources: function disposeResources() {
+            this.showError = false;
+            if (this.showCamera) this.closeCamera();
+            $('.add-user-modal').fadeOut();
+            this.clearUser();
+        },
+        displayFlash: function displayFlash(flashMessage) {
+            // Call parent dashboard event to open the "Flash Message"
+            this.$dispatch('callOpenFlashChild', flashMessage);
+        },
+        saveUser: function saveUser() {
+            var _this = this;
+
+            // Display errors if there are any
+            this.showError = true;
+
+            if (this.isValid) {
+                // Store to temp variable
+                var user = this.newUser;
+
+                // Delete confirm password from temp variable
+                delete user.c_password;
+
+                // Display loading
+                this.showLoading = true;
+
+                // Send post request
+                this.resource.save({ id: 1 }, { data: user }).then(function (response) {
+                    var flashMessage = {
+                        icon: response.data.icon,
+                        header: response.data.header,
+                        body: response.data.body
+                    };
+                    $('.add-user-modal').fadeOut();
+                    _this.showLoading = false;
+                    _this.displayFlash(flashMessage);
+
+                    // Refresh administrator list
+                    _this.$dispatch('callFetchUsers');
+
+                    // Clear form
+                    _this.clearUser();
+                });
+            }
+        },
+        clearUser: function clearUser() {
+            this.showLoading = false;
+            this.newUser = {
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                password: '',
+                c_password: '',
+                role_id: 2,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            };
+        }
+    },
+
+    ready: function ready() {
+
+        // Watch if input file changes
+        $('input[type="file"]').change(this.setUploadedImage.bind(this));
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n    <div class=\"general-container-override add-user-modal user-modal\">\n        <div class=\"general-wrap-override\">\n            <div class=\"modal-container\">\n                <span class=\"modal-close\" @click=\"disposeResources\">\n                    <i class=\"remove icon\"></i>\n                </span>\n                <div class=\"modal-header\">\n                    <div class=\"header-title\">\n                        <strong>Create</strong>\n                        <span>user profile</span>\n                    </div>\n                    <small class=\"header-subtext\">\n                        Fill out the form below with valid information.\n                    </small>\n                </div>\n                <div class=\"modal-nav override\">\n                    <strong>Academics Account</strong>\n                </div>\n                <div class=\"modal-body ui segment loaders\">\n                    <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                        <div class=\"ui text loader\">Loading</div>\n                    </div>\n                    <div class=\"capture-container\" v-show=\"showCamera\">\n\t\t                <div class=\"camera-wrap\">\n\t\t                    <strong>Webcamera</strong>\n\t\t                    <div id=\"video-camera-add\" class=\"video-camera\"></div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override tiny teal\" @click=\"takeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Capture\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"closeCamera\">\n\t\t                            <i class=\"remove icon\"></i>\n\t\t                            Cancel\n\t\t                        </button>\n\t\t                    </div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"!showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override tiny teal\" @click=\"setCameraImage\">\n\t\t                            <i class=\"check icon\"></i>\n\t\t                            Save\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"retakeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Re-Capture\n\t\t                        </button>\n\t\t                    </div>\n\t\t                </div>\n\t\t            </div>\n                    <div class=\"body-title\">\n                        Basic and Account Informations\n                    </div>\n                    <div class=\"body-form ui grid form override\">\n                        <div class=\"seven wide column profile-photo\">\n                            <img class=\"ui tiny circular image overrides\" :src=\"newUser.imageURI.src\">\n                            <div class=\"ui pointing icon dropdown override cmbProfilePhoto\">\n                                <strong>Choose Picture</strong>\n                                <div class=\"menu\">\n                                    <div class=\"header\">Profile Picture</div>\n                                    <div class=\"divider\"></div>\n                                    <div class=\"item\" @click=\"openCamera\">\n                                        <i class=\"photo icon\"></i>\n                                        Take Photo\n                                    </div>\n                                    <div class=\"item\" @click=\"selectPhotoUpload\">\n                                    \t<input type=\"file\" accept=\"image/*\" v-el:upload-photo=\"\" class=\"hidden override\">\n                                        <i class=\"upload icon\"></i>\n                                        Upload Photo\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"nine wide column\">\n                            <div class=\"field\" :class=\"{ 'error': !validation.firstname &amp;&amp; showError }\">\n                                <label>First Name</label>\n                                <input placeholder=\"First Name\" type=\"text\" v-model=\"newUser.firstname\" autofocus=\"\">\n                            </div>\n                            <div class=\"field\" :class=\"{ 'error': !validation.lastname &amp;&amp; showError }\">\n                                <label>Last Name</label>\n                                <input placeholder=\"Last Name\" type=\"text\" v-model=\"newUser.lastname\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\" :class=\"{ 'error': (!validation.email_empty || !validation.email_check) &amp;&amp; showError }\">\n                                <label>Email Address</label>\n                                <input placeholder=\"Email Address\" type=\"text\" v-model=\"newUser.email_address\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\">\n                                <label>User's Role</label>\n                                <div class=\"ui selection dropdown\">\n                                    <input name=\"gender\" type=\"hidden\" v-model=\"newUser.role_id\">\n                                    <i class=\"dropdown icon\"></i>\n                                    <div class=\"default text\">Select user role</div>\n                                    <div class=\"menu\">\n                                        <div class=\"item\" v-for=\"role in userroles\" :data-value=\"role.role_id\">{{ role.role_name }}</div>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\" :class=\"{ 'error': !validation.username &amp;&amp; showError }\">\n                                <label>Username</label>\n                                <div class=\"ui left icon input\">\n                                    <input placeholder=\"Username\" type=\"text\" v-model=\"newUser.username\">\n                                    <i class=\"user icon\"></i>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"two fields\">\n                                <div class=\"field\" :class=\"{ 'error': !validation.password &amp;&amp; showError }\">\n                                    <label>Password</label>\n                                    <div class=\"ui left icon input\">\n                                        <input placeholder=\"Password\" type=\"password\" v-model=\"newUser.password\">\n                                        <i class=\"lock icon\"></i>\n                                    </div>\n                                </div>\n                                <div class=\"field\" :class=\"{ 'error': (!validation.c_password || !validation.pass_mismatch) &amp;&amp; showError }\">\n                                    <label>Confirm Password</label>\n                                    <div class=\"ui left icon input\">\n                                        <input placeholder=\"Confirm Password\" type=\"password\" v-model=\"newUser.c_password\">\n                                        <i class=\"lock icon\"></i>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"ui mini error message override\" v-if=\"!isValid &amp;&amp; showError\">\n                                <div class=\"header\">\n                                    There was some errors with your submission\n                                </div>\n                                <ul class=\"list\">\n                                    <li v-show=\"!validation.firstname\">You need to enter your Firstname.</li>\n                                    <li v-show=\"!validation.lastname\">You need to enter your Lastname.</li>\n                                    <li v-show=\"!validation.email_empty\">You need to enter your Email Address.</li>\n                                    <li v-show=\"!validation.email_check\">Please enter a valid Email Address.</li>\n                                    <li v-show=\"!validation.username\">You need to enter your Username.</li>\n                                    <li v-show=\"!validation.password\">You need to enter your Password.</li>\n                                    <li v-show=\"!validation.c_password\">You need to re-enter your Password.</li>\n                                    <li v-show=\"!validation.pass_mismatch\">Passwords did not match, please re-type again.</li>\n                                </ul>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <div class=\"modal-footer\">\n                    <div class=\"ui white deny button override tiny custom\" @click=\"disposeResources\">\n                        Cancel\n                    </div>\n                    <div class=\"ui teal right labeled icon button override tiny custom\" @click=\"saveUser\">\n                        Create User\n                        <i class=\"checkmark icon\"></i>\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class=\"bg-no-image add-user-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-24cb992c", module.exports)
+  } else {
+    hotAPI.update("_v-24cb992c", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"babel-runtime/core-js/object/keys":1,"vue":41,"vue-hot-reload-api":38}],45:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url', 'resource'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            showDelete: true,
+            user: {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            }
+
+        };
+    },
+
+
+    events: {
+        callFetchUserDelete: function callFetchUserDelete(user, command) {
+            this.showLoading = true;
+            this.showDelete = command;
+            this.fetchUser(user);
+        }
+    },
+
+    methods: {
+        fetchUser: function fetchUser(user) {
+            // Retrieve users
+            this.$set('user', user);
+            this.showLoading = false;
+        },
+        executeQuery: function executeQuery(command) {
+            var _this = this;
+
+            this.resource.delete({ user_id: this.user.user_id + command }).then(function (response) {
+                var flashMessage = {
+                    icon: response.data.icon,
+                    header: response.data.header,
+                    body: response.data.body
+                };
+
+                $('.delete-user-modal').fadeOut();
+                _this.showLoading = false;
+                _this.$dispatch('callOpenFlashChild', flashMessage);
+
+                // Refresh administrator list
+                _this.$dispatch('callFetchUsers');
+            });
+        },
+        disposeResources: function disposeResources() {
+            $('.delete-user-modal').fadeOut();
+            this.user = {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            };
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override delete-user-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"disposeResources\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>Delete</strong>\n                    <span>user profile</span>\n                </div>\n                <small class=\"header-subtext\">\n                    This information should not be released publicly.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Academics Account</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders\">\n                <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                    <div class=\"ui text loader\">Loading</div>\n                </div>\n                <div class=\"body-title\">\n                    User <strong>{{ user.username }}</strong> Informations\n                </div>\n                <div class=\"body-form ui grid form override view-user\">\n                    <div class=\"view-photo\">\n                         <img :src=\"root_url + 'images/profile_images/' + user.staffs.photo\">\n                         <div class=\"ui tiny label override\">No. {{ user.user_id }}</div>\n                    </div>\n                    <div class=\"ui special cards\">\n                        <div class=\"card override\">\n                            <div class=\"content\">\n                                <div class=\"header\">{{ user.staffs.firstname }} {{ user.staffs.lastname }}</div>\n                                <div class=\"meta\">\n                                    <a><i class=\"mail outline icon\"></i> {{ user.staffs.email_address }}</a>\n                                </div>\n                                <div class=\"description\">\n                                    <div class=\"ui mini icon error message override\" v-if=\"showDelete\">\n                                        <div class=\"content\">\n                                            Are you sure you want to continue deleting this account?\n                                        </div>\n                                    </div>\n                                    <div class=\"ui mini icon positive message override\" v-if=\"!showDelete\">\n                                        <div class=\"content\">\n                                            Are you sure you want to continue restoring this account?\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer delete-user\">\n                <div class=\"ui white fluid left labeled icon button override tiny custom\" @click=\"disposeResources\">\n                    <i class=\"remove icon\"></i>\n                    Cancel\n                </div>\n                <div class=\"ui teal fluid right labeled icon button override tiny custom\" v-if=\"showDelete\" @click=\"executeQuery('-delete')\">\n                    Delete User\n                    <i class=\"checkmark icon\"></i>\n                </div>\n                <div class=\"ui teal fluid right labeled icon button override tiny custom\" v-if=\"!showDelete\" @click=\"executeQuery('-restore')\">\n                    Restore User\n                    <i class=\"checkmark icon\"></i>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image delete-user-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-14c3a072", module.exports)
+  } else {
+    hotAPI.update("_v-14c3a072", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],46:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _keys = require('babel-runtime/core-js/object/keys');
+
+var _keys2 = _interopRequireDefault(_keys);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var emailRE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url', 'resource', 'userroles'],
+
+    data: function data() {
+        return {
+
+            showCaptureBtn: true,
+            showCamera: false,
+            showLoading: false,
+            showError: false,
+            newUser: {
+                user_id: 0,
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                role_id: 0,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            }
+
+        };
+    },
+
+
+    computed: {
+        validation: function validation() {
+            return {
+                firstname: !!this.newUser.firstname.trim(),
+                lastname: !!this.newUser.lastname.trim(),
+                email_empty: !!this.newUser.email_address.trim(),
+                email_check: emailRE.test(this.newUser.email_address)
+            };
+        },
+        isValid: function isValid() {
+            var validation = this.validation;
+            return (0, _keys2.default)(validation).every(function (key) {
+                return validation[key];
+            });
+        }
+    },
+
+    watch: {
+        'userroles': function userroles() {
+            var self = this;
+            setTimeout(function () {
+                $('.ui.dropdown').dropdown('set selected', self.userroles[0].role_id);
+            }, 100);
+        }
+    },
+
+    events: {
+        callFetchUserEdit: function callFetchUserEdit(user) {
+            this.showLoading = true;
+            this.fetchUser(user);
+        }
+    },
+
+    methods: {
+        /*** Profile Photo ***/
+        // Webcamera methods
+        startVideoCamera: function startVideoCamera() {
+            Webcam.set({
+                width: 320, height: 240,
+                dest_width: 320, dest_height: 240,
+                crop_width: 240, crop_height: 240,
+                image_format: 'jpeg', jpeg_quality: 90,
+                flip_horiz: true
+            });
+            Webcam.attach('#video-camera-edit');
+        },
+        takeSnapshot: function takeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.freeze();
+        },
+        retakeSnapshot: function retakeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.unfreeze();
+        },
+        closeCamera: function closeCamera() {
+            this.showCamera = false;
+            Webcam.reset();
+        },
+        openCamera: function openCamera() {
+            this.startVideoCamera();
+            this.showCamera = true;
+        },
+        setCameraImage: function setCameraImage() {
+            var self = this;
+            Webcam.snap(function (image_uri) {
+                self.newUser.imageURI.src = image_uri;
+                self.newUser.imageURI.name = moment().format('x') + '.jpg';
+                self.retakeSnapshot();
+                self.closeCamera();
+            });
+        },
+
+        // Upload Image Methods
+        selectPhotoUpload: function selectPhotoUpload() {
+            this.$els.uploadPhoto.click();
+        },
+
+        setUploadedImage: function setUploadedImage(event) {
+            var input = event.target.files[0];
+            var reader = new FileReader();
+            var self = this;
+            reader.onload = function (e) {
+                self.newUser.imageURI.src = e.target.result;
+            };
+            self.newUser.imageURI.name = input.name;
+            reader.readAsDataURL(input);
+        },
+
+        disposeResources: function disposeResources() {
+            this.showError = false;
+            if (this.showCamera) this.closeCamera();
+            $('.edit-user-modal').fadeOut();
+            this.clearUser();
+        },
+        displayFlash: function displayFlash(flashMessage) {
+            // Call parent dashboard event to open the "Flash Message"
+            this.$dispatch('callOpenFlashChild', flashMessage);
+        },
+        fetchUser: function fetchUser(user) {
+            // Retrieve users
+            this.showLoading = false;
+            $('.ui.dropdown').dropdown('set selected', user.role_id);
+            this.newUser = {
+                user_id: user.user_id,
+                firstname: user.staffs.firstname,
+                lastname: user.staffs.lastname,
+                email_address: user.staffs.email_address,
+                username: user.username,
+                role_id: user.role_id,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/' + user.staffs.photo,
+                    name: user.staffs.photo
+                }
+            };
+        },
+        updateUser: function updateUser() {
+            var _this = this;
+
+            // Display errors if there are any
+            this.showError = true;
+
+            if (this.isValid) {
+                // Store to temp variable
+                var user = this.newUser;
+
+                // Display loading
+                this.showLoading = true;
+
+                // Send post request
+                this.resource.update({ user_id: user.user_id }, { data: user }).then(function (response) {
+                    var flashMessage = {
+                        icon: response.data.icon,
+                        header: response.data.header,
+                        body: response.data.body
+                    };
+                    $('.edit-user-modal').fadeOut();
+                    _this.showLoading = false;
+                    _this.displayFlash(flashMessage);
+
+                    // Refresh administrator list
+                    _this.$dispatch('callFetchUsers');
+
+                    // Clear form
+                    _this.clearUser();
+                });
+            }
+        },
+        clearUser: function clearUser() {
+            this.showError = false;
+            this.newUser = {
+                user_id: 0,
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            };
+        }
+    },
+
+    ready: function ready() {
+
+        // Watch if input file changes
+        $('input[type="file"]').change(this.setUploadedImage.bind(this));
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n    <div class=\"general-container-override edit-user-modal user-modal\">\n        <div class=\"general-wrap-override\">\n            <div class=\"modal-container\">\n                <span class=\"modal-close\" @click=\"disposeResources\">\n                    <i class=\"remove icon\"></i>\n                </span>\n                <div class=\"modal-header\">\n                    <div class=\"header-title\">\n                        <strong>Update</strong>\n                        <span>user profile</span>\n                    </div>\n                    <small class=\"header-subtext\">\n                        Fill out the form below with valid information.\n                    </small>\n                </div>\n                <div class=\"modal-nav override\">\n                    <strong>Academics Account</strong>\n                </div>\n                <div class=\"modal-body ui segment loaders\">\n                    <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                        <div class=\"ui text loader\">Loading</div>\n                    </div>\n                    <div class=\"capture-container\" v-show=\"showCamera\">\n\t\t                <div class=\"camera-wrap\">\n\t\t                    <strong>Webcamera</strong>\n\t\t                    <div id=\"video-camera-edit\" class=\"video-camera edit-camera\"></div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override mini teal\" @click=\"takeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Capture\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"closeCamera\">\n\t\t                            <i class=\"remove icon\"></i>\n\t\t                            Cancel\n\t\t                        </button>\n\t\t                    </div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"!showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override tiny teal\" @click=\"setCameraImage\">\n\t\t                            <i class=\"check icon\"></i>\n\t\t                            Save\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"retakeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Re-Capture\n\t\t                        </button>\n\t\t                    </div>\n\t\t                </div>\n\t\t            </div>\n                    <div class=\"body-title\">\n                        User <strong>{{ newUser.username }}</strong> Informations\n                    </div>\n                    <div class=\"body-form ui grid form override\">\n                        <div class=\"seven wide column profile-photo\">\n                            <img class=\"ui tiny circular image overrides\" :src=\"newUser.imageURI.src\">\n                            <div class=\"ui pointing icon dropdown override cmbProfilePhoto\">\n                                <strong>Choose Picture</strong>\n                                <div class=\"menu\">\n                                    <div class=\"header\">Profile Picture</div>\n                                    <div class=\"divider\"></div>\n                                    <div class=\"item\" @click=\"openCamera\">\n                                        <i class=\"photo icon\"></i>\n                                        Take Photo\n                                    </div>\n                                    <div class=\"item\" @click=\"selectPhotoUpload\">\n                                    \t<input type=\"file\" accept=\"image/*\" v-el:upload-photo=\"\" class=\"hidden override\">\n                                        <i class=\"upload icon\"></i>\n                                        Upload Photo\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"nine wide column\">\n                            <div class=\"field\" :class=\"{ 'error': !validation.firstname &amp;&amp; showError }\">\n                                <label>First Name</label>\n                                <input placeholder=\"First Name\" type=\"text\" v-model=\"newUser.firstname\" autofocus=\"\">\n                            </div>\n                            <div class=\"field\" :class=\"{ 'error': !validation.lastname &amp;&amp; showError }\">\n                                <label>Last Name</label>\n                                <input placeholder=\"Last Name\" type=\"text\" v-model=\"newUser.lastname\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\" :class=\"{ 'error': (!validation.email_empty || !validation.email_check) &amp;&amp; showError }\">\n                                <label>Email Address</label>\n                                <input placeholder=\"Email Address\" type=\"text\" v-model=\"newUser.email_address\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\">\n                                <label>User's Role</label>\n                                <div class=\"ui selection dropdown\">\n                                    <input name=\"gender\" type=\"hidden\" v-model=\"newUser.role_id\">\n                                    <i class=\"dropdown icon\"></i>\n                                    <div class=\"default text\">Select user role</div>\n                                    <div class=\"menu\">\n                                        <div class=\"item\" v-for=\"role in userroles\" :data-value=\"role.role_id\">{{ role.role_name }}</div>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"ui mini error message override\" v-if=\"!isValid &amp;&amp; showError\">\n                                <div class=\"header\">\n                                    There was some errors with your submission\n                                </div>\n                                <ul class=\"list\">\n                                    <li v-show=\"!validation.firstname\">You need to enter your Firstname.</li>\n                                    <li v-show=\"!validation.lastname\">You need to enter your Lastname.</li>\n                                    <li v-show=\"!validation.email_empty\">You need to enter your Email Address.</li>\n                                    <li v-show=\"!validation.email_check\">Please enter a valid Email Address.</li>\n                                </ul>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <div class=\"modal-footer\">\n                    <div class=\"ui white deny button override tiny custom\" @click=\"disposeResources\">\n                        Cancel\n                    </div>\n                    <div class=\"ui teal right labeled icon button override tiny custom\" @click=\"updateUser\">\n                        Update User\n                        <i class=\"checkmark icon\"></i>\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class=\"bg-no-image edit-user-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-7172e111", module.exports)
+  } else {
+    hotAPI.update("_v-7172e111", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"babel-runtime/core-js/object/keys":1,"vue":41,"vue-hot-reload-api":38}],47:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            user: {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                roles: {
+                    role_id: 1,
+                    role_name: 'Academics'
+                },
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            }
+
+        };
+    },
+
+
+    events: {
+        callFetchUserView: function callFetchUserView(user) {
+            this.showLoading = true;
+            this.fetchUser(user);
+        }
+    },
+
+    methods: {
+        fetchUser: function fetchUser(user) {
+            // Retrieve users
+            this.$set('user', user);
+            this.showLoading = false;
+        },
+        disposeResources: function disposeResources() {
+            $('.view-user-modal').fadeOut();
+            this.user = {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                roles: {
+                    role_id: 1,
+                    role_name: 'Academics'
+                },
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            };
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override view-user-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"disposeResources\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>View</strong>\n                    <span>user profile</span>\n                </div>\n                <small class=\"header-subtext\">\n                    This information should not be released publicly.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Academics Account</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders\">\n                <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                    <div class=\"ui text loader\">Loading</div>\n                </div>\n                <div class=\"body-title\">\n                    Basic and Account Information\n                </div>\n                <div class=\"body-form ui grid form override view-user\">\n                    <div class=\"view-photo\">\n                         <img :src=\"root_url + 'images/profile_images/' + user.staffs.photo\">\n                         <div class=\"ui tiny label override\">No. {{ user.user_id }}</div>\n                    </div>\n                    <div class=\"ui special cards\">\n                        <div class=\"card override\">\n                            <div class=\"content\">\n                                <div class=\"header\">{{ user.staffs.firstname }} {{ user.staffs.lastname }}</div>\n                                <div class=\"meta\">\n                                    <a><i class=\"mail outline icon\"></i> {{ user.staffs.email_address }}</a>\n                                </div>\n                                <div class=\"description\">\n                                    Hi, <label v-show=\"user.staffs.nickname != null \">you can call me {{ user.staffs.nickname }}.</label>\n                                    I am an {{ user.active == 1 ? 'active' : 'inactive' }} {{ user.roles.role_name }}\n                                    from {{ user.staffs.country }}<label v-show=\"user.staffs.contact != null \"> and my contact number is\n                                    {{ user.staffs.contact }}</label>.\n                                </div>\n                            </div>\n                            <div class=\"extra content\">\n                                <span class=\"right floated\">\n                                    Joined in {{ user.created_at | moments \"MMM DD, YYYY\" }}\n                                </span>\n                                <span>\n                                    <i class=\"user icon\"></i>\n                                    {{ user.username }}\n                                </span>\n                            </div>-\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer view-user\">\n                <div class=\"ui teal deny button override tiny custom\" @click=\"disposeResources\">\n                    Close\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image view-user-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-593ce82c", module.exports)
+  } else {
+    hotAPI.update("_v-593ce82c", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],48:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+
+var addUser = require('../components/Administrator/Add.vue');
+var viewUser = require('../components/Administrator/View.vue');
+var editUser = require('../components/Administrator/Edit.vue');
+var deleteUser = require('../components/Administrator/Delete.vue');
+
+exports.default = {
+
+    parent: Dashboard.app,
+
+    data: function data() {
+        return {
+
+            root_url: window.url_rootDIR,
+            resource: this.$resource('admin{/user_id}'),
+            users: [],
+            tableInfo: [],
+            pages: [],
+            showRows: 10,
+            searchQuery: '',
+            columns: [{ columnName: 'Status', columnValue: 'active' }, { columnName: 'User ID', columnValue: 'user_id' }, { columnName: 'Fullname', columnValue: 'staffs.firstname' }, { columnName: 'Username', columnValue: 'username' }, { columnName: 'Email Address', columnValue: 'staffs.email_address' }],
+            sortColumn: '',
+            sortOrder: 0
+
+        };
+    },
+
+
+    components: {
+        'addUser': addUser,
+        'viewUser': viewUser,
+        'editUser': editUser,
+        'deleteUser': deleteUser
+    },
+
+    watch: {
+        'showRows': function showRows() {
+            this.fetchUsers('');
+        }
+    },
+
+    methods: {
+        searchUser: function searchUser(user) {
+            return String(user.user_id).indexOf(this.searchQuery) != -1 || user.username.toLowerCase().indexOf(this.searchQuery) != -1 || user.staffs.firstname.toLowerCase().indexOf(this.searchQuery) != -1 || user.staffs.lastname.toLowerCase().indexOf(this.searchQuery) != -1 || user.staffs.email_address.toLowerCase().indexOf(this.searchQuery) != -1;
+        },
+        fetchUsers: function fetchUsers(page) {
+            var _this = this;
+
+            // Clear users variable
+            this.users = [];
+            // Clear sorting
+            this.sortColumn = '';
+            // Retrieve users
+            this.$http.get('admin/list/' + this.showRows + page).then(function (response) {
+                _this.$set('users', response.data.user);
+                _this.$set('tableInfo', {
+                    firstItem: response.data.firstItem,
+                    lastItem: response.data.lastItem,
+                    total: response.data.total
+                });
+                _this.getPagination();
+            });
+        },
+        addUser: function addUser() {
+            $('.add-user-modal').fadeIn();
+        },
+        viewUser: function viewUser(user) {
+            $('.view-user-modal').fadeIn();
+            //this.$broadcast('callFetchUserView', user);
+        },
+        editUser: function editUser(user) {
+            $('.edit-user-modal').fadeIn();
+            //this.$broadcast('callFetchUserEdit', user);
+        },
+        deleteUser: function deleteUser(user) {
+            $('.delete-user-modal').fadeIn();
+            //this.$broadcast('callFetchUserDelete', user, true);
+        },
+        restoreUser: function restoreUser(user) {
+            $('.delete-user-modal').fadeIn();
+            //this.$broadcast('callFetchUserDelete', user, false);
+        },
+        getPagination: function getPagination() {
+            var link_limit = 7;
+
+            // Clear pages array
+            this.pages = [];
+
+            // Set pages
+            if (this.users.last_page > 1) {
+                for (var i = 1; i <= this.users.last_page; i++) {
+                    var half_total_links = _.floor(link_limit / 2);
+                    var from = this.users.current_page - half_total_links;
+                    var to = this.users.current_page + half_total_links;
+
+                    if (this.users.current_page < half_total_links) {
+                        to += half_total_links - this.users.current_page;
+                    }
+                    if (this.users.last_page - this.users.current_page < half_total_links) {
+                        from -= half_total_links - (this.users.last_page - this.users.current_page) - 1;
+                    }
+                    if (from < i && to > i) {
+                        this.pages.push(i);
+                    }
+                }
+            }
+        },
+        sortBy: function sortBy() {
+            this.sortOrder = this.sortOrder == -1 ? 0 : -1;
+        }
+    },
+
+    events: {
+        callFetchUsers: function callFetchUsers() {
+            this.fetchUsers('');
+        }
+    },
+
+    mounted: function mounted() {
+
+        // Fetch users
+        this.fetchUsers('');
+
+        // Enable dropdown
+        $('.ui.dropdown').dropdown();
+
+        // Hide modals
+        $('.user-modal').hide();
+
+        $(".dashboard-right .body-right .general-body.content .content-body").mCustomScrollbar({
+            scrollButtons: { enable: true },
+            theme: "dark-3",
+            scrollbarPosition: "inside",
+            mouseWheel: { enable: true }
+        });
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"content-container\">\n    <div class=\"ui segment override wrapper general-body content\">\n        <div class=\"ui segment override header content-header\">\n            <div class=\"header-title\">\n                <i class=\"users icon\"></i>\n                <div class=\"title\">Administrator</div>\n            </div>\n            <div class=\"header-actions\">\n                <button class=\"ui mini teal button overrides default override text-button\" @click=\"addUser\">\n                    Create User\n                </button>\n            </div>\n        </div>\n\n        <!-- admin Table -->\n        <div class=\"ui segment loaders general-body-content content-body\">\n            <div class=\"ui inverted dimmer\" :class=\"{ 'active':  users.length == 0}\">\n                <div class=\"ui text loader\">Loading</div>\n            </div>\n            <div class=\"content-body-form\">\n                <small>Note: You can search for an ID, Name, Username or Email.</small>\n                <div class=\"search-options\">\n                    <button class=\"ui icon button white override icon-only\" @click=\"fetchUsers('')\">\n                        <i class=\"refresh icon\"></i>\n                    </button>\n                    <div class=\"ui input custom-border\">\n                        <input placeholder=\"Search...\" type=\"text\" class=\"search-input\" v-model=\"searchQuery\">\n                    </div>\n                    <div class=\"ui icon top right pointing dropdown button teal override icon-only record-count\">\n                        <i class=\"options icon\"></i>\n                        <div class=\"menu\">\n                            <div class=\"header\">Other Options</div>\n                            <div class=\"divider\"></div>\n                            <div class=\"ui search input\">\n                                <label>Show rows:</label>\n                                <select v-model=\"showRows\">\n                                    <option value=\"10\">10</option>\n                                    <option value=\"20\">20</option>\n                                    <option value=\"30\">30</option>\n                                    <option value=\"40\">40</option>\n                                    <option value=\"50\">50</option>\n                                    <option value=\"60\">60</option>\n                                    <option value=\"70\">70</option>\n                                    <option value=\"80\">80</option>\n                                    <option value=\"90\">90</option>\n                                    <option value=\"100\">100</option>\n                                </select>\n                            </div>\n                            <div class=\"divider\"></div>\n                            <div class=\"ui search input sortby\">\n                                <label>Sort by:</label>\n                                <select v-model=\"sortColumn\">\n                                    <option v-for=\"col in columns\" :value=\"col.columnValue\" @click=\"sortBy\">{{ col.columnName }}</option>\n                                </select>\n                            </div>\n                            <div class=\"item\"></div>\n                        </div>\n                    </div>\n                </div>\n                <table class=\"ui small very basic table override\">\n                    <thead>\n                        <tr>\n                            <th class=\"center aligned\">Status</th>\n                            <th class=\"center aligned\">#</th>\n                            <th>Name</th>\n                            <th>Username</th>\n                            <th>Email Address</th>\n                            <th>Actions</th>\n                        </tr>\n                    </thead>\n                    <tbody>\n                        <tr v-for=\"user in users.data\n                            | filterBy searchUser\n                            | orderBy sortColumn sortOrder\n                            | orderBy active 0\n                        \" :class=\"{'error': user.active != 1}\">\n                            <td class=\"collapsing center aligned\">\n                                <i class=\"check icon green td-status\" v-if=\"user.active == 1\"></i>\n                                <i class=\"remove icon red td-status\" v-if=\"user.active != 1\"></i>\n                            </td>\n                            <td class=\"collapsing\">\n                                <small><div class=\"ui horizontal label override number\">{{ user.user_id }}</div></small>\n                            </td>\n                            <td>\n                                <h4 class=\"ui image header override\">\n                                    <img :src=\"root_url + 'images/profile_images/' + user.staffs.photo\" class=\"ui mini circular image\">\n                                    <div class=\"content\">\n                                        <span>{{ user.staffs.firstname }} {{ user.staffs.lastname }}</span>\n                                        <div class=\"sub header\">\n                                            <small>Created {{ user.created_at }}</small>\n                                        </div>\n                                    </div>\n                                </h4>\n                            </td>\n                            <td>\n                                <span><i class=\"user icon\"></i> {{ user.username }}</span>\n                            </td>\n                            <td>\n                                <span><i class=\"mail icon\"></i> {{ user.staffs.email_address }}</span>\n                            </td>\n                            <td class=\"collapsing\">\n                                <div class=\"ui buttons btn-actions\">\n                                    <button class=\"ui icon button mini\" @click=\"viewUser(user)\" title=\"View\">\n                                        <i class=\"search icon\"></i>\n                                    </button>\n                                    <button class=\"ui icon button mini\" @click=\"editUser(user)\" title=\"Edit\">\n                                        <i class=\"edit icon\"></i>\n                                    </button>\n                                    <button v-if=\"user.active != 0\" class=\"ui icon button mini\" @click=\"deleteUser(user)\" title=\"Delete\">\n                                        <i class=\"trash icon\"></i>\n                                    </button>\n                                    <button v-if=\"user.active == 0\" class=\"ui icon button mini\" @click=\"restoreUser(user)\" title=\"Restore\">\n                                        <i class=\"refresh icon\"></i>\n                                    </button>\n                                </div>\n                            </td>\n                        </tr>\n                    </tbody>\n                </table>\n            </div>\n        </div>\n        <div class=\"pagination-wrapper\">\n            <label>Showing {{ tableInfo.firstItem }} to {{ tableInfo.lastItem }} of {{ tableInfo.total }} entries</label>\n            <div class=\"ui pagination menu override default\" v-show=\"pages.length > 0\">\n                <a class=\"icon item\" :class=\"{ 'disabled': users.current_page == 1 }\" @click.prevent=\"fetchUsers('?page=1')\">\n                    <i class=\"left chevron icon\"></i>\n                </a>\n                <a class=\"item\" v-for=\"page in pages\" :class=\"{ 'active': users.current_page == page }\" @click.prevent=\"fetchUsers('?page=' + page)\">\n                    {{ page }}\n                </a>\n                <a class=\"icon item\" :class=\"{ 'disabled': users.current_page == users.last_page }\" @click.prevent=\"fetchUsers('?page=' + users.last_page)\">\n                    <i class=\"right chevron icon\"></i>\n                </a>\n            </div>\n        </div>\n    </div>\n\n    <!-- Account Modals -->\n    <view-user :root_url=\"root_url\"></view-user>\n    <add-user :root_url=\"root_url\" :resource=\"resource\"></add-user>\n    <edit-user :root_url=\"root_url\" :resource=\"resource\"></edit-user>\n    <delete-user :root_url=\"root_url\" :resource=\"resource\"></delete-user>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-66101174", module.exports)
+  } else {
+    hotAPI.update("_v-66101174", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"../components/Administrator/Add.vue":49,"../components/Administrator/Delete.vue":50,"../components/Administrator/Edit.vue":51,"../components/Administrator/View.vue":52,"vue":41,"vue-hot-reload-api":38}],49:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _keys = require('babel-runtime/core-js/object/keys');
+
+var _keys2 = _interopRequireDefault(_keys);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var emailRE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+exports.default = {
+
+    parent: Dashboard.app,
+
+    props: ['root_url', 'resource'],
+
+    data: function data() {
+        return {
+
+            showCaptureBtn: true,
+            showCamera: false,
+            showLoading: false,
+            showError: false,
+            newUser: {
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                password: '',
+                c_password: '',
+                role_id: 1,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            }
+
+        };
+    },
+
+
+    computed: {
+        validation: function validation() {
+            return {
+                firstname: !!this.newUser.firstname.trim(),
+                lastname: !!this.newUser.lastname.trim(),
+                email_empty: !!this.newUser.email_address.trim(),
+                email_check: emailRE.test(this.newUser.email_address),
+                username: !!this.newUser.username.trim(),
+                password: !!this.newUser.password.trim(),
+                c_password: !!this.newUser.c_password.trim(),
+                pass_mismatch: this.newUser.c_password.trim() != this.newUser.password.trim() ? false : true
+            };
+        },
+        isValid: function isValid() {
+            var validation = this.validation;
+            return (0, _keys2.default)(validation).every(function (key) {
+                return validation[key];
+            });
+        }
+    },
+
+    methods: {
+        /*** Profile Photo ***/
+        // Webcamera methods
+        startVideoCamera: function startVideoCamera() {
+            Webcam.set({
+                width: 320, height: 240,
+                dest_width: 320, dest_height: 240,
+                crop_width: 240, crop_height: 240,
+                image_format: 'jpeg', jpeg_quality: 90,
+                flip_horiz: true
+            });
+            Webcam.attach('#video-camera-add');
+        },
+        takeSnapshot: function takeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.freeze();
+        },
+        retakeSnapshot: function retakeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.unfreeze();
+        },
+        closeCamera: function closeCamera() {
+            this.showCamera = false;
+            Webcam.reset();
+        },
+        openCamera: function openCamera() {
+            this.startVideoCamera();
+            this.showCamera = true;
+        },
+        setCameraImage: function setCameraImage() {
+            var self = this;
+            Webcam.snap(function (image_uri) {
+                self.newUser.imageURI.src = image_uri;
+                self.newUser.imageURI.name = moment().format('x') + '.jpg';
+                self.retakeSnapshot();
+                self.closeCamera();
+            });
+        },
+
+        // Upload Image Methods
+        selectPhotoUpload: function selectPhotoUpload() {
+            this.$refs.uploadPhoto.click();
+        },
+
+        setUploadedImage: function setUploadedImage(event) {
+            var input = event.target.files[0];
+            var reader = new FileReader();
+            var self = this;
+            reader.onload = function (e) {
+                self.newUser.imageURI.src = e.target.result;
+            };
+            self.newUser.imageURI.name = input.name;
+            reader.readAsDataURL(input);
+        },
+
+        disposeResources: function disposeResources() {
+            this.showError = false;
+            if (this.showCamera) this.closeCamera();
+            $('.add-user-modal').fadeOut();
+            this.clearUser();
+        },
+        displayFlash: function displayFlash(flashMessage) {
+            // Call parent dashboard event to open the "Flash Message"
+            //this.$dispatch('callOpenFlashChild', flashMessage);
+        },
+        saveUser: function saveUser() {
+            var _this = this;
+
+            // Display errors if there are any
+            this.showError = true;
+
+            if (this.isValid) {
+                // Store to temp variable
+                var user = this.newUser;
+
+                // Delete confirm password from temp variable
+                delete user.c_password;
+
+                // Display loading
+                this.showLoading = true;
+
+                // Send post request
+                this.resource.save({ id: 1 }, { data: user }).then(function (response) {
+                    var flashMessage = {
+                        icon: response.data.icon,
+                        header: response.data.header,
+                        body: response.data.body
+                    };
+                    $('.add-user-modal').fadeOut();
+                    _this.showLoading = false;
+                    _this.displayFlash(flashMessage);
+
+                    // Refresh administrator list
+                    //this.$dispatch('callFetchUsers');
+
+                    // Clear form
+                    _this.clearUser();
+                });
+            }
+        },
+        clearUser: function clearUser() {
+            this.showLoading = false;
+            this.newUser = {
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                password: '',
+                c_password: '',
+                role_id: 1,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            };
+        }
+    },
+
+    mounted: function mounted() {
+
+        // Watch if input file changes
+        $('input[type="file"]').change(this.setUploadedImage.bind(this));
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div>\n    <div class=\"general-container-override add-user-modal user-modal\">\n        <div class=\"general-wrap-override\">\n            <div class=\"modal-container\">\n                <span class=\"modal-close\" @click=\"disposeResources\">\n                    <i class=\"remove icon\"></i>\n                </span>\n                <div class=\"modal-header\">\n                    <div class=\"header-title\">\n                        <strong>Create</strong>\n                        <span>user profile</span>\n                    </div>\n                    <small class=\"header-subtext\">\n                        Fill out the form below with valid information.\n                    </small>\n                </div>\n                <div class=\"modal-nav override\">\n                    <strong>Administrator Account</strong>\n                </div>\n                <div class=\"modal-body ui segment loaders\">\n                    <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                        <div class=\"ui text loader\">Loading</div>\n                    </div>\n                    <div class=\"capture-container\" v-show=\"showCamera\">\n\t\t                <div class=\"camera-wrap\">\n\t\t                    <strong>Webcamera</strong>\n\t\t                    <div id=\"video-camera-add\" class=\"video-camera\"></div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override tiny teal\" @click=\"takeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Capture\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"closeCamera\">\n\t\t                            <i class=\"remove icon\"></i>\n\t\t                            Cancel\n\t\t                        </button>\n\t\t                    </div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"!showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override tiny teal\" @click=\"setCameraImage\">\n\t\t                            <i class=\"check icon\"></i>\n\t\t                            Save\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"retakeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Re-Capture\n\t\t                        </button>\n\t\t                    </div>\n\t\t                </div>\n\t\t            </div>\n                    <div class=\"body-title\">\n                        Basic and Account Informations\n                    </div>\n                    <div class=\"body-form ui grid form override\">\n                        <div class=\"seven wide column profile-photo\">\n                            <img class=\"ui tiny circular image overrides\" :src=\"newUser.imageURI.src\">\n                            <div class=\"ui pointing icon dropdown override cmbProfilePhoto\">\n                                <strong>Choose Picture</strong>\n                                <div class=\"menu\">\n                                    <div class=\"header\">Profile Picture</div>\n                                    <div class=\"divider\"></div>\n                                    <div class=\"item\" @click=\"openCamera\">\n                                        <i class=\"photo icon\"></i>\n                                        Take Photo\n                                    </div>\n                                    <div class=\"item\" @click=\"selectPhotoUpload\">\n                                    \t<input type=\"file\" accept=\"image/*\" ref=\"upload-photo\" class=\"hidden override\">\n                                        <i class=\"upload icon\"></i>\n                                        Upload Photo\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"nine wide column\">\n                            <div class=\"field\" :class=\"{ 'error': !validation.firstname &amp;&amp; showError }\">\n                                <label>First Name</label>\n                                <input placeholder=\"First Name\" type=\"text\" v-model=\"newUser.firstname\" autofocus=\"\">\n                            </div>\n                            <div class=\"field\" :class=\"{ 'error': !validation.lastname &amp;&amp; showError }\">\n                                <label>Last Name</label>\n                                <input placeholder=\"Last Name\" type=\"text\" v-model=\"newUser.lastname\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\" :class=\"{ 'error': (!validation.email_empty || !validation.email_check) &amp;&amp; showError }\">\n                                <label>Email Address</label>\n                                <input placeholder=\"Email Address\" type=\"text\" v-model=\"newUser.email_address\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\" :class=\"{ 'error': !validation.username &amp;&amp; showError }\">\n                                <label>Username</label>\n                                <div class=\"ui left icon input\">\n                                    <input placeholder=\"Username\" type=\"text\" v-model=\"newUser.username\">\n                                    <i class=\"user icon\"></i>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"two fields\">\n                                <div class=\"field\" :class=\"{ 'error': !validation.password &amp;&amp; showError }\">\n                                    <label>Password</label>\n                                    <div class=\"ui left icon input\">\n                                        <input placeholder=\"Password\" type=\"password\" v-model=\"newUser.password\">\n                                        <i class=\"lock icon\"></i>\n                                    </div>\n                                </div>\n                                <div class=\"field\" :class=\"{ 'error': (!validation.c_password || !validation.pass_mismatch) &amp;&amp; showError }\">\n                                    <label>Confirm Password</label>\n                                    <div class=\"ui left icon input\">\n                                        <input placeholder=\"Confirm Password\" type=\"password\" v-model=\"newUser.c_password\">\n                                        <i class=\"lock icon\"></i>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"ui mini error message override\" v-if=\"!isValid &amp;&amp; showError\">\n                                <div class=\"header\">\n                                    There was some errors with your submission\n                                </div>\n                                <ul class=\"list\">\n                                    <li v-show=\"!validation.firstname\">You need to enter your Firstname.</li>\n                                    <li v-show=\"!validation.lastname\">You need to enter your Lastname.</li>\n                                    <li v-show=\"!validation.email_empty\">You need to enter your Email Address.</li>\n                                    <li v-show=\"!validation.email_check\">Please enter a valid Email Address.</li>\n                                    <li v-show=\"!validation.username\">You need to enter your Username.</li>\n                                    <li v-show=\"!validation.password\">You need to enter your Password.</li>\n                                    <li v-show=\"!validation.c_password\">You need to re-enter your Password.</li>\n                                    <li v-show=\"!validation.pass_mismatch\">Passwords did not match, please re-type again.</li>\n                                </ul>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <div class=\"modal-footer\">\n                    <div class=\"ui white deny button override tiny custom\" @click=\"disposeResources\">\n                        Cancel\n                    </div>\n                    <div class=\"ui teal right labeled icon button override tiny custom\" @click=\"saveUser\">\n                        Create User\n                        <i class=\"checkmark icon\"></i>\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class=\"bg-no-image add-user-modal user-modal\"></div>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-a05e2f2a", module.exports)
+  } else {
+    hotAPI.update("_v-a05e2f2a", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"babel-runtime/core-js/object/keys":1,"vue":41,"vue-hot-reload-api":38}],50:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url', 'resource'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            showDelete: true,
+            user: {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            }
+
+        };
+    },
+
+
+    events: {
+        callFetchUserDelete: function callFetchUserDelete(user, command) {
+            this.showLoading = true;
+            this.showDelete = command;
+            this.fetchUser(user);
+        }
+    },
+
+    methods: {
+        fetchUser: function fetchUser(user) {
+            // Retrieve users
+            this.$set('user', user);
+            this.showLoading = false;
+        },
+        executeQuery: function executeQuery(command) {
+            var _this = this;
+
+            this.resource.delete({ user_id: this.user.user_id + command }).then(function (response) {
+                var flashMessage = {
+                    icon: response.data.icon,
+                    header: response.data.header,
+                    body: response.data.body
+                };
+
+                $('.delete-user-modal').fadeOut();
+                _this.showLoading = false;
+                //this.$dispatch('callOpenFlashChild', flashMessage);
+
+                // Refresh administrator list
+                //this.$dispatch('callFetchUsers');
+            });
+        },
+        disposeResources: function disposeResources() {
+            $('.delete-user-modal').fadeOut();
+            this.user = {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            };
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div>\n    <div class=\"general-container-override delete-user-modal user-modal\">\n        <div class=\"general-wrap-override\">\n            <div class=\"modal-container\">\n                <span class=\"modal-close\" @click=\"disposeResources\">\n                    <i class=\"remove icon\"></i>\n                </span>\n                <div class=\"modal-header\">\n                    <div class=\"header-title\">\n                        <strong>Delete</strong>\n                        <span>user profile</span>\n                    </div>\n                    <small class=\"header-subtext\">\n                        This information should not be released publicly.\n                    </small>\n                </div>\n                <div class=\"modal-nav override\">\n                    <strong>Administrator Account</strong>\n                </div>\n                <div class=\"modal-body ui segment loaders\">\n                    <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                        <div class=\"ui text loader\">Loading</div>\n                    </div>\n                    <div class=\"body-title\">\n                        User <strong>{{ user.username }}</strong> Informations\n                    </div>\n                    <div class=\"body-form ui grid form override view-user\">\n                        <div class=\"view-photo\">\n                             <img :src=\"root_url + 'images/profile_images/' + user.staffs.photo\">\n                             <div class=\"ui tiny label override\">No. {{ user.user_id }}</div>\n                        </div>\n                        <div class=\"ui special cards\">\n                            <div class=\"card override\">\n                                <div class=\"content\">\n                                    <div class=\"header\">{{ user.staffs.firstname }} {{ user.staffs.lastname }}</div>\n                                    <div class=\"meta\">\n                                        <a><i class=\"mail outline icon\"></i> {{ user.staffs.email_address }}</a>\n                                    </div>\n                                    <div class=\"description\">\n                                        <div class=\"ui mini icon error message override\" v-if=\"showDelete\">\n                                            <div class=\"content\">\n                                                Are you sure you want to continue deleting this account?\n                                            </div>\n                                        </div>\n                                        <div class=\"ui mini icon positive message override\" v-if=\"!showDelete\">\n                                            <div class=\"content\">\n                                                Are you sure you want to continue restoring this account?\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <div class=\"modal-footer delete-user\">\n                    <div class=\"ui white fluid left labeled icon button override tiny custom\" @click=\"disposeResources\">\n                        <i class=\"remove icon\"></i>\n                        Cancel\n                    </div>\n                    <div class=\"ui teal fluid right labeled icon button override tiny custom\" v-if=\"showDelete\" @click=\"executeQuery('-delete')\">\n                        Delete User\n                        <i class=\"checkmark icon\"></i>\n                    </div>\n                    <div class=\"ui teal fluid right labeled icon button override tiny custom\" v-if=\"!showDelete\" @click=\"executeQuery('-restore')\">\n                        Restore User\n                        <i class=\"checkmark icon\"></i>\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class=\"bg-no-image delete-user-modal user-modal\"></div>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-1dd5805e", module.exports)
+  } else {
+    hotAPI.update("_v-1dd5805e", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],51:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _keys = require('babel-runtime/core-js/object/keys');
+
+var _keys2 = _interopRequireDefault(_keys);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var emailRE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url', 'resource'],
+
+    data: function data() {
+        return {
+
+            showCaptureBtn: true,
+            showCamera: false,
+            showLoading: false,
+            showError: false,
+            newUser: {
+                user_id: 0,
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            }
+
+        };
+    },
+
+
+    computed: {
+        validation: function validation() {
+            return {
+                firstname: !!this.newUser.firstname.trim(),
+                lastname: !!this.newUser.lastname.trim(),
+                email_empty: !!this.newUser.email_address.trim(),
+                email_check: emailRE.test(this.newUser.email_address)
+            };
+        },
+        isValid: function isValid() {
+            var validation = this.validation;
+            return (0, _keys2.default)(validation).every(function (key) {
+                return validation[key];
+            });
+        }
+    },
+
+    events: {
+        callFetchUserEdit: function callFetchUserEdit(user) {
+            this.showLoading = true;
+            this.fetchUser(user);
+        }
+    },
+
+    methods: {
+        /*** Profile Photo ***/
+        // Webcamera methods
+        startVideoCamera: function startVideoCamera() {
+            Webcam.set({
+                width: 320, height: 240,
+                dest_width: 320, dest_height: 240,
+                crop_width: 240, crop_height: 240,
+                image_format: 'jpeg', jpeg_quality: 90,
+                flip_horiz: true
+            });
+            Webcam.attach('#video-camera-edit');
+        },
+        takeSnapshot: function takeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.freeze();
+        },
+        retakeSnapshot: function retakeSnapshot() {
+            this.showCaptureBtn = !this.showCaptureBtn;
+            Webcam.unfreeze();
+        },
+        closeCamera: function closeCamera() {
+            this.showCamera = false;
+            Webcam.reset();
+        },
+        openCamera: function openCamera() {
+            this.startVideoCamera();
+            this.showCamera = true;
+        },
+        setCameraImage: function setCameraImage() {
+            var self = this;
+            Webcam.snap(function (image_uri) {
+                self.newUser.imageURI.src = image_uri;
+                self.newUser.imageURI.name = moment().format('x') + '.jpg';
+                self.retakeSnapshot();
+                self.closeCamera();
+            });
+        },
+
+        // Upload Image Methods
+        selectPhotoUpload: function selectPhotoUpload() {
+            this.$els.uploadPhoto.click();
+        },
+
+        setUploadedImage: function setUploadedImage(event) {
+            var input = event.target.files[0];
+            var reader = new FileReader();
+            var self = this;
+            reader.onload = function (e) {
+                self.newUser.imageURI.src = e.target.result;
+            };
+            self.newUser.imageURI.name = input.name;
+            reader.readAsDataURL(input);
+        },
+
+        disposeResources: function disposeResources() {
+            this.showError = false;
+            if (this.showCamera) this.closeCamera();
+            $('.edit-user-modal').fadeOut();
+            this.clearUser();
+        },
+        displayFlash: function displayFlash(flashMessage) {
+            // Call parent dashboard event to open the "Flash Message"
+            //this.$dispatch('callOpenFlashChild', flashMessage);
+        },
+        fetchUser: function fetchUser(user) {
+            // Retrieve users
+            this.showLoading = false;
+            this.newUser = {
+                user_id: user.user_id,
+                firstname: user.staffs.firstname,
+                lastname: user.staffs.lastname,
+                email_address: user.staffs.email_address,
+                username: user.username,
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/' + user.staffs.photo,
+                    name: user.staffs.photo
+                }
+            };
+        },
+        updateUser: function updateUser() {
+            var _this = this;
+
+            // Display errors if there are any
+            this.showError = true;
+
+            if (this.isValid) {
+                // Store to temp variable
+                var user = this.newUser;
+
+                // Display loading
+                this.showLoading = true;
+
+                // Send post request
+                this.resource.update({ user_id: user.user_id }, { data: user }).then(function (response) {
+                    var flashMessage = {
+                        icon: response.data.icon,
+                        header: response.data.header,
+                        body: response.data.body
+                    };
+                    $('.edit-user-modal').fadeOut();
+                    _this.showLoading = false;
+                    _this.displayFlash(flashMessage);
+
+                    // Refresh administrator list
+                    //this.$dispatch('callFetchUsers');
+
+                    // Clear form
+                    _this.clearUser();
+                });
+            }
+        },
+        clearUser: function clearUser() {
+            this.showError = false;
+            this.newUser = {
+                user_id: 0,
+                firstname: '',
+                lastname: '',
+                email_address: '',
+                username: '',
+                imageURI: {
+                    src: this.root_url + 'images/profile_images/default.png',
+                    name: 'default.png'
+                }
+            };
+        }
+    },
+
+    ready: function ready() {
+
+        // Watch if input file changes
+        $('input[type="file"]').change(this.setUploadedImage.bind(this));
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div>\n    <div class=\"general-container-override edit-user-modal user-modal\">\n        <div class=\"general-wrap-override\">\n            <div class=\"modal-container\">\n                <span class=\"modal-close\" @click=\"disposeResources\">\n                    <i class=\"remove icon\"></i>\n                </span>\n                <div class=\"modal-header\">\n                    <div class=\"header-title\">\n                        <strong>Update</strong>\n                        <span>user profile</span>\n                    </div>\n                    <small class=\"header-subtext\">\n                        Fill out the form below with valid information.\n                    </small>\n                </div>\n                <div class=\"modal-nav override\">\n                    <strong>Administrator Account</strong>\n                </div>\n                <div class=\"modal-body ui segment loaders\">\n                    <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                        <div class=\"ui text loader\">Loading</div>\n                    </div>\n                    <div class=\"capture-container\" v-show=\"showCamera\">\n\t\t                <div class=\"camera-wrap\">\n\t\t                    <strong>Webcamera</strong>\n\t\t                    <div id=\"video-camera-edit\" class=\"video-camera edit-camera\"></div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override mini teal\" @click=\"takeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Capture\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"closeCamera\">\n\t\t                            <i class=\"remove icon\"></i>\n\t\t                            Cancel\n\t\t                        </button>\n\t\t                    </div>\n\t\t                    <div class=\"camera-buttons\" v-show=\"!showCaptureBtn\">\n\t\t                        <button class=\"ui labeled icon button override tiny teal\" @click=\"setCameraImage\">\n\t\t                            <i class=\"check icon\"></i>\n\t\t                            Save\n\t\t                        </button>\n\t\t                        <button class=\"ui right labeled icon button override tiny red\" @click=\"retakeSnapshot\">\n\t\t                            <i class=\"camera icon\"></i>\n\t\t                            Re-Capture\n\t\t                        </button>\n\t\t                    </div>\n\t\t                </div>\n\t\t            </div>\n                    <div class=\"body-title\">\n                        User <strong>{{ newUser.username }}</strong> Informations\n                    </div>\n                    <div class=\"body-form ui grid form override\">\n                        <div class=\"seven wide column profile-photo\">\n                            <img class=\"ui tiny circular image overrides\" :src=\"newUser.imageURI.src\">\n                            <div class=\"ui pointing icon dropdown override cmbProfilePhoto\">\n                                <strong>Choose Picture</strong>\n                                <div class=\"menu\">\n                                    <div class=\"header\">Profile Picture</div>\n                                    <div class=\"divider\"></div>\n                                    <div class=\"item\" @click=\"openCamera\">\n                                        <i class=\"photo icon\"></i>\n                                        Take Photo\n                                    </div>\n                                    <div class=\"item\" @click=\"selectPhotoUpload\">\n                                    \t<input type=\"file\" accept=\"image/*\" v-el:upload-photo=\"\" class=\"hidden override\">\n                                        <i class=\"upload icon\"></i>\n                                        Upload Photo\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                        <div class=\"nine wide column\">\n                            <div class=\"field\" :class=\"{ 'error': !validation.firstname &amp;&amp; showError }\">\n                                <label>First Name</label>\n                                <input placeholder=\"First Name\" type=\"text\" v-model=\"newUser.firstname\" autofocus=\"\">\n                            </div>\n                            <div class=\"field\" :class=\"{ 'error': !validation.lastname &amp;&amp; showError }\">\n                                <label>Last Name</label>\n                                <input placeholder=\"Last Name\" type=\"text\" v-model=\"newUser.lastname\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"field\" :class=\"{ 'error': (!validation.email_empty || !validation.email_check) &amp;&amp; showError }\">\n                                <label>Email Address</label>\n                                <input placeholder=\"Email Address\" type=\"text\" v-model=\"newUser.email_address\">\n                            </div>\n                        </div>\n                        <div class=\"sixteen wide column\">\n                            <div class=\"ui mini error message override\" v-if=\"!isValid &amp;&amp; showError\">\n                                <div class=\"header\">\n                                    There was some errors with your submission\n                                </div>\n                                <ul class=\"list\">\n                                    <li v-show=\"!validation.firstname\">You need to enter your Firstname.</li>\n                                    <li v-show=\"!validation.lastname\">You need to enter your Lastname.</li>\n                                    <li v-show=\"!validation.email_empty\">You need to enter your Email Address.</li>\n                                    <li v-show=\"!validation.email_check\">Please enter a valid Email Address.</li>\n                                </ul>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n                <div class=\"modal-footer\">\n                    <div class=\"ui white deny button override tiny custom\" @click=\"disposeResources\">\n                        Cancel\n                    </div>\n                    <div class=\"ui teal right labeled icon button override tiny custom\" @click=\"updateUser\">\n                        Update User\n                        <i class=\"checkmark icon\"></i>\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n    <div class=\"bg-no-image edit-user-modal user-modal\"></div>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-13da67a0", module.exports)
+  } else {
+    hotAPI.update("_v-13da67a0", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"babel-runtime/core-js/object/keys":1,"vue":41,"vue-hot-reload-api":38}],52:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.administrator,
+
+    props: ['root_url'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            user: {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            }
+
+        };
+    },
+
+
+    events: {
+        callFetchUserView: function callFetchUserView(user) {
+            this.showLoading = true;
+            this.fetchUser(user);
+        }
+    },
+
+    methods: {
+        fetchUser: function fetchUser(user) {
+            // Retrieve users
+            this.$set('user', user);
+            this.showLoading = false;
+        },
+        disposeResources: function disposeResources() {
+            $('.view-user-modal').fadeOut();
+            this.user = {
+                active: 1,
+                created_at: "2016-10-05 14:09:58",
+                role_id: 1,
+                staffs: {
+                    contact: '',
+                    country: "Philippines",
+                    email_address: "jess.default@gmail.com",
+                    firstname: "Jess",
+                    lastname: "Default",
+                    nickname: '',
+                    photo: "default.png",
+                    staff_id: 19
+                },
+                user_id: 1,
+                username: "jess.default"
+            };
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override view-user-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"disposeResources\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>View</strong>\n                    <span>user profile</span>\n                </div>\n                <small class=\"header-subtext\">\n                    This information should not be released publicly.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Administrator Account</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders\">\n                <div class=\"ui inverted dimmer\" :class=\"{ 'active':  showLoading }\">\n                    <div class=\"ui text loader\">Loading</div>\n                </div>\n                <div class=\"body-title\">\n                    Basic and Account Information\n                </div>\n                <div class=\"body-form ui grid form override view-user\">\n                    <div class=\"view-photo\">\n                         <img :src=\"root_url + 'images/profile_images/' + user.staffs.photo\">\n                         <div class=\"ui tiny label override\">No. {{ user.user_id }}</div>\n                    </div>\n                    <div class=\"ui special cards\">\n                        <div class=\"card override\">\n                            <div class=\"content\">\n                                <div class=\"header\">{{ user.staffs.firstname }} {{ user.staffs.lastname }}</div>\n                                <div class=\"meta\">\n                                    <a><i class=\"mail outline icon\"></i> {{ user.staffs.email_address }}</a>\n                                </div>\n                                <div class=\"description\">\n                                    Hi, <label v-show=\"user.staffs.nickname != null \">you can call me {{ user.staffs.nickname }}.</label>\n                                    I am an {{ user.active == 1 ? 'active' : 'inactive' }} Administrator\n                                    from {{ user.staffs.country }}<label v-show=\"user.staffs.contact != null \"> and my contact number is\n                                    {{ user.staffs.contact }}</label>.\n                                </div>\n                            </div>\n                            <div class=\"extra content\">\n                                <span class=\"right floated\">\n                                    Joined in {{ user.created_at | moments \"MMM DD, YYYY\" }}\n                                </span>\n                                <span>\n                                    <i class=\"user icon\"></i>\n                                    {{ user.username }}\n                                </span>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer view-user\">\n                <div class=\"ui teal deny button override tiny custom\" @click=\"disposeResources\">\n                    Close\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image view-user-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-4446596a", module.exports)
+  } else {
+    hotAPI.update("_v-4446596a", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],53:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+
+var calendar = require('../components/Classes/Calendar.vue');
+var addClass = require('../components/Classes/Add.vue');
+var viewClass = require('../components/Classes/View.vue');
+var editClass = require('../components/Classes/Edit.vue');
+var deleteClass = require('../components/Classes/Delete.vue');
+
+exports.default = {
+
+    parent: Dashboard.app,
+
+    props: ['breadcrumbs'],
+
+    data: function data() {
+        return {
+
+            root_url: window.url_rootDIR,
+            resource: this.$resource('classes{/class_id}'),
+            cur_breadcrumbs: { name: 'Classes', icon: 'calendar' },
+            offset: moment().tz(window.timezone).format("Z"),
+            showCalendar: true,
+            searchQuery: '',
+            sortColumn: '',
+            sortOrder: 0,
+            original_events: [],
+            event_schedules: [],
+            class_schedules: [],
+            teachers: [],
+            students: [],
+            events: []
+
+        };
+    },
+
+
+    components: {
+        'calendar': calendar,
+        'addClass': addClass,
+        'viewClass': viewClass,
+        'editClass': editClass,
+        'deleteClass': deleteClass
+    },
+
+    methods: {
+        addClass: function addClass() {
+            $('.add-class-modal').fadeIn();
+        },
+        viewClass: function viewClass() {
+            $('.view-class-modal').fadeIn();
+        },
+        fetchTeachers: function fetchTeachers() {
+            var _this = this;
+
+            // Fetch teachers
+            this.resource.get({ id: 1 }).then(function (response) {
+                _this.$set('teachers', response.json());
+                _this.teachers = _.sortBy(_this.teachers, 'staffs.firstname');
+            });
+        },
+        fetchStudents: function fetchStudents() {
+            var _this2 = this;
+
+            // Fetch teachers
+            this.$http.get('classes/list/students/get').then(function (response) {
+                _this2.$set('students', response.json());
+                _this2.students = _.sortBy(_this2.students, 'staffs.firstname');
+            });
+        },
+        fetchEvents: function fetchEvents() {
+            var _this3 = this;
+
+            this.offset = this.offset.split(":")[0].replace('0', '');
+            this.events = [];
+            this.class_schedules = [];
+            this.event_schedules = [];
+
+            // Fetch events
+            this.$http.get('classes/events/' + moment().tz(window.timezone).subtract(1, 'months').format("YYYY-MM-01")).then(function (response) {
+                var self = _this3;
+                _.forEach(response.data, function (val, key) {
+                    var newSched = moment(val.sched_date).add(self.offset, 'hours').format();
+                    var schedDate = moment(newSched).format("YYYY-MM-DD"),
+                        dateToday = moment().tz(window.timezone).format("YYYY-MM-DD");
+
+                    var schedules = {
+                        unique: moment(newSched).format("YYYYMMDDHH") + val.staff_id,
+                        from: moment(newSched).format(),
+                        to: moment(newSched).add(1, 'hours').format(),
+                        active: val.active,
+                        class_id: val.class_id,
+                        class_type: val.class_type,
+                        teacher_id: val.staffs.staff_id,
+                        teacher_firstname: val.staffs.firstname,
+                        teacher_lastname: val.staffs.lastname,
+                        teacher_photo: val.staffs.photo,
+                        teacher_email: val.staffs.email_address,
+                        students: val.students,
+                        student_firstname: val.students != null ? val.students.firstname : null,
+                        student_lastname: val.students != null ? val.students.lastname : null,
+                        student_course: val.students != null ? val.students.student_class[0].course[0].course_name : null,
+                        student_level: val.students != null ? val.students.student_class[0].level[0].level_name : null,
+                        lesson: val.students != null ? val.students.student_class[0].lesson_num : null
+                    };
+                    if (!moment(schedDate).isBefore(dateToday)) self.class_schedules.push(schedules);
+                    self.event_schedules.push(schedules);
+                    self.events.push({
+                        id: val.class_id,
+                        title: 'Teacher ' + val.staffs.lastname,
+                        start: moment(newSched).format(),
+                        end: moment(newSched).add(1, 'hours').format(),
+                        availability: val.students != null ? val.students : false
+                    });
+                });
+                _this3.events = _.sortBy(_this3.events, 'start');
+                _this3.event_schedules = _.sortBy(_this3.event_schedules, 'from');
+                // Refetch newly added events
+                _this3.$broadcast('reload-events');
+                _this3.$set('original_events', response.data);
+            });
+        },
+        viewEvents: function viewEvents(date) {
+            var arrViewEvents = [],
+                self = this,
+                selectedDate = moment(date).format("YYYY-MM-DD");
+            _.forEach(this.original_events, function (val, key) {
+                var valuedDate = moment(val.sched_date).add(self.offset, 'hours').format('YYYY-MM-DD');
+                if (valuedDate === selectedDate) {
+                    arrViewEvents.push({
+                        original: val,
+                        dateOffset: moment(val.sched_date).add(self.offset, 'hours').format()
+                    });
+                }
+            });
+            arrViewEvents = _.sortBy(arrViewEvents, 'dateOffset');
+            // Pass events to view modal
+            this.$broadcast('viewEvents', arrViewEvents, date);
+            // Open view modal
+            this.viewClass();
+        },
+        searchClass: function searchClass(classes) {
+            var returnSearch;
+            if (classes.students != null) {
+                returnSearch = String(classes.class_id).indexOf(this.searchQuery) != -1 || classes.teacher_firstname.toLowerCase().indexOf(this.searchQuery) != -1 || classes.teacher_lastname.toLowerCase().indexOf(this.searchQuery) != -1 || classes.teacher_email.toLowerCase().indexOf(this.searchQuery) != -1 || moment(classes.from).format("MMM DD, YYYY").toLowerCase().indexOf(this.searchQuery) != -1 || moment(classes.from).format("MMMM DD, YYYY").toLowerCase().indexOf(this.searchQuery) != -1 || classes.student_firstname.toLowerCase().indexOf(this.searchQuery) != -1 || classes.student_lastname.toLowerCase().indexOf(this.searchQuery) != -1 || classes.student_course.toLowerCase().indexOf(this.searchQuery) != -1;
+            } else {
+                returnSearch = String(classes.class_id).indexOf(this.searchQuery) != -1 || classes.teacher_firstname.toLowerCase().indexOf(this.searchQuery) != -1 || classes.teacher_lastname.toLowerCase().indexOf(this.searchQuery) != -1 || classes.teacher_email.toLowerCase().indexOf(this.searchQuery) != -1 || moment(classes.from).format("MMM DD, YYYY").toLowerCase().indexOf(this.searchQuery) != -1 || moment(classes.from).format("MMMM DD, YYYY").toLowerCase().indexOf(this.searchQuery) != -1;
+            }
+
+            return returnSearch;
+        }
+    },
+
+    events: {
+        editClass: function editClass(event) {
+            this.$broadcast('getEditEvents', event);
+            $('.view-class-modal').fadeOut();
+            setTimeout(function () {
+                $('.edit-class-modal').fadeIn();
+            }, 300);
+        },
+        deleteClass: function deleteClass(event) {
+            var arrEvent = [];
+            arrEvent.push(event);
+            this.$broadcast('getDeleteEvents', arrEvent);
+            $('.view-class-modal').fadeOut();
+            setTimeout(function () {
+                $('.delete-class-modal').fadeIn();
+            }, 300);
+        },
+        daySelected: function daySelected(date) {
+            this.viewEvents(date.format());
+        },
+        eventSelected: function eventSelected(event) {
+            this.viewEvents(event.start.format());
+        },
+        eventLimitClick: function eventLimitClick(cellInfo, jsEvent) {
+            this.viewEvents(cellInfo.date.format());
+        },
+        refetchEvents: function refetchEvents() {
+            this.fetchEvents();
+        }
+    },
+
+    ready: function ready() {
+
+        this.breadcrumbs = this.cur_breadcrumbs;
+
+        // Fetch teachers
+        this.fetchTeachers();
+
+        // Fetch students
+        this.fetchStudents();
+
+        // Fetch events
+        this.fetchEvents();
+
+        // Hide modals
+        $('.user-modal').hide();
+        //$('.delete-class-modal').fadeIn();
+
+        // Enable dropdown
+        $('.ui.dropdown').dropdown();
+
+        $(".dashboard-right .body-right .general-body.content .content-body").mCustomScrollbar({
+            scrollButtons: { enable: true },
+            theme: "dark-3",
+            scrollInertia: 500,
+            scrollbarPosition: "inside",
+            mouseWheel: { enable: true }
+        });
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"ui segment override wrapper general-body content\">\n    <div class=\"ui segment override header content-header\">\n        <div class=\"header-title\">\n            <i class=\"calendar icon\"></i>\n            <div class=\"title\">Classes</div>\n        </div>\n        <div class=\"header-actions\">\n            <button class=\"ui mini teal button overrides default override icon-only header-button\" title=\"Table View\" v-show=\"!showCalendar\" @click=\"showCalendar = !showCalendar\">\n                <i class=\"tasks icon\"></i>\n            </button>\n            <button class=\"ui mini teal button overrides default override icon-only header-button\" title=\"Calendar View\" v-show=\"showCalendar\" @click=\"showCalendar = !showCalendar\">\n                <i class=\"calendar icon\"></i>\n            </button>\n            <button class=\"ui mini teal button overrides default override text-button\" @click=\"addClass\">\n                Create Class\n            </button>\n        </div>\n    </div>\n\n    <!-- admin Table -->\n    <div class=\"ui segment loaders general-body-content content-body\">\n        <div class=\"ui inverted dimmer\">\n            <div class=\"ui text loader\">Loading</div>\n        </div>\n\n        <div class=\"content-body-form\" v-show=\"showCalendar\">\n            <calendar :events.sync=\"events\"></calendar>\n        </div>\n        <div class=\"content-body-form\" v-show=\"!showCalendar\">\n            <small>Note: You can search for an ID, Date, Name, Email or Course.</small>\n            <div class=\"search-options\">\n                <button class=\"ui icon button white override icon-only\" @click=\"\">\n                    <i class=\"refresh icon\"></i>\n                </button>\n                <div class=\"ui input custom-border\">\n                    <input placeholder=\"Search...\" type=\"text\" class=\"search-input\" v-model=\"searchQuery\">\n                </div>\n                <div class=\"ui icon top right pointing dropdown button teal override icon-only record-count\">\n                    <i class=\"options icon\"></i>\n                    <div class=\"menu\">\n                        <div class=\"header\">Other Options</div>\n                        <div class=\"divider\"></div>\n                        <div class=\"ui search input\">\n                            <label>Show rows:</label>\n                            <select v-model=\"\">\n                                <option value=\"10\">10</option>\n                                <option value=\"20\">20</option>\n                                <option value=\"30\">30</option>\n                                <option value=\"40\">40</option>\n                                <option value=\"50\">50</option>\n                                <option value=\"60\">60</option>\n                                <option value=\"70\">70</option>\n                                <option value=\"80\">80</option>\n                                <option value=\"90\">90</option>\n                                <option value=\"100\">100</option>\n                            </select>\n                        </div>\n                        <div class=\"divider\"></div>\n                        <div class=\"ui search input sortby\">\n                            <label>Sort by:</label>\n                            <select v-model=\"\">\n\n                            </select>\n                        </div>\n                        <div class=\"item\"></div>\n                    </div>\n                </div>\n            </div>\n            <table class=\"ui small very basic table override classes\">\n                <thead>\n                    <tr>\n                        <th class=\"last-right-padding center aligned\">Status</th>\n                        <th>#</th>\n                        <th>Date</th>\n                        <th>Type</th>\n                        <th>Teacher</th>\n                        <th>Student</th>\n                        <th class=\"collapsing center aligned\">Level</th>\n                        <th class=\"collapsing center aligned\">Lesson</th>\n                    </tr>\n                </thead>\n                <tbody>\n                    <tr v-for=\"classes in class_schedules\n                              | filterBy searchClass\n                              | orderBy sortColumn sortOrder\n                              | orderBy active 0\n                    \">\n                        <td class=\"collapsing\">\n                            <div class=\"ui horizontal label override\" :class=\"{'teal': classes.active == 1}\">\n                                {{ classes.active == 1 ? 'Active' : 'Inactive' }}\n                            </div>\n                        </td>\n                        <td class=\"collapsing\"><small>#{{ classes.class_id }}</small></td>\n                        <td>\n                            <span><i class=\"wait icon\"></i> {{ classes.from | moments \"MMM DD, YYYY\" }}</span>\n                        </td>\n                        <td>\n                            <small>{{ classes.class_type == '1:1' ? 'Single Type(1:1)' : 'Group Type(1:4)' }}</small>\n                        </td>\n                        <td>\n                            <h4 class=\"ui image header override\">\n                                <img :src=\"root_url + 'images/profile_images/' + classes.teacher_photo\" class=\"ui mini circular image\">\n                                <div class=\"content\">\n                                    <span>{{ classes.teacher_firstname }} {{ classes.teacher_lastname }}</span>\n                                    <div class=\"sub header\">\n                                        <small>{{ classes.teacher_email }}</small>\n                                    </div>\n                                </div>\n                            </h4>\n                        </td>\n                        <td>\n                            <h4 class=\"ui image header override\" v-if=\"classes.students != null\">\n                                <img :src=\"root_url + 'images/profile_images/' + classes.students.photo\" class=\"ui mini circular image\">\n                                <div class=\"content\">\n                                    <span>{{ classes.student_firstname }} {{ classes.student_lastname }}</span>\n                                    <div class=\"sub header\">\n                                        <small>{{ classes.student_course | capitalize }}</small>\n                                    </div>\n                                </div>\n                            </h4>\n                            <small v-if=\"classes.students == null\">(No Student)</small>\n                        </td>\n                        <td class=\"center aligned\">\n                            <small v-if=\"classes.students != null\">{{ classes.student_level }}</small>\n                            <small v-if=\"classes.students == null\">(Empty)</small>\n                        </td>\n                        <td class=\"center aligned\">\n                            <small v-if=\"classes.students != null\">{{ classes.lesson }}</small>\n                            <small v-if=\"classes.students == null\">(Empty)</small>\n                        </td>\n                    </tr>\n                </tbody>\n            </table>\n        </div>\n    </div>\n</div>\n\n<!-- Classes Modals -->\n<add-class :root_url=\"root_url\" :resource=\"resource\" :teachers=\"teachers\" :students=\"students\" :event-schedules.sync=\"event_schedules\" :offset=\"offset\"></add-class>\n<view-class :root_url=\"root_url\"></view-class>\n<edit-class :root_url=\"root_url\" :resource=\"resource\" :teachers=\"teachers\" :students=\"students\" :event-schedules.sync=\"event_schedules\" :offset=\"offset\"></edit-class>\n<delete-class :root_url=\"root_url\" :resource=\"resource\"></delete-class>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-41059642", module.exports)
+  } else {
+    hotAPI.update("_v-41059642", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"../components/Classes/Add.vue":54,"../components/Classes/Calendar.vue":55,"../components/Classes/Delete.vue":56,"../components/Classes/Edit.vue":57,"../components/Classes/View.vue":58,"vue":41,"vue-hot-reload-api":38}],54:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.classes,
+
+    props: ['root_url', 'resource', 'teachers', 'students', 'eventSchedules', 'offset'],
+
+    data: function data() {
+        return {
+
+            showTime: false,
+            showLoading: false,
+            showResult: false,
+            showForm: true,
+            addSched: true,
+            dataResult: {
+                success: false,
+                failed: false,
+                nohours: false
+            },
+            dateSelected: moment().tz(window.timezone).format("YYYY-MM-DD"),
+            timeFromSelected: moment(this.dateSelected).format("YYYY-MM-DD 01:00:00"),
+            classtype: '1:1',
+            studentID: 0,
+            teacherInfo: {},
+            timeFrom: {
+                time: [],
+                teacher_id: 0
+            }
+
+        };
+    },
+
+
+    computed: {
+        timeTo: function timeTo() {
+            return moment(this.timeFromSelected).add(1, 'hours').format();
+        }
+    },
+
+    methods: {
+        disposeResources: function disposeResources() {
+            $('.add-class-modal').fadeOut();
+            this.setDefault();
+        },
+        setDefault: function setDefault() {
+            $('.ui.dropdown.teacher-dropdown.teacher').dropdown('restore defaults');
+            $('#btnAddClass, .sched-time.add, .student-dropdown.add').addClass('disabled');
+        },
+        dayClick: function dayClick(date) {
+            this.setDefault();
+            var curDate = moment().tz(timezone.determine().name()).format("YYYY-MM-DD");
+            if (!moment(date).isBefore(curDate)) {
+                this.dateSelected = date.format();
+                this.showTime = true;
+            }
+        },
+        addClass: function addClass() {
+            var _this = this;
+
+            // Display loading
+            this.showLoading = true;
+
+            // Set default value
+            this.dataResult.success = false;
+            this.dataResult.failed = false;
+            this.dataResult.nohours = false;
+
+            var schedule = {
+                unique: moment(this.timeFromSelected).format("YYYYMMDDHH") + this.teacherInfo.user_id,
+                from: moment(this.timeFromSelected).format(),
+                to: moment(this.timeFromSelected).add(1, 'hours').format(),
+                sched_date: moment(this.timeFromSelected).subtract(this.offset, 'hours').format("YYYY-MM-DD HH:mm:ss"),
+                class_type: this.classtype,
+                teacher_id: this.teacherInfo.staffs.staff_id,
+                student_id: this.studentID
+            };
+
+            this.resource.save({ id: 1 }, { data: schedule }).then(function (response) {
+                _this.showLoading = false;
+                _this.showResult = true;
+
+                if (response.data == 'success') _this.dataResult.success = true;else if (response.data == 'failed') _this.dataResult.failed = true;else if (response.data == 'nohours') _this.dataResult.nohours = true;
+
+                // Get FROM TIME value and remove time from dropdown
+                var timeValue = moment($('.ui.dropdown.timeSelection').dropdown('get value')).format();
+                _this.timeFrom.time.splice(_.findIndex(_this.timeFrom.time, function (o) {
+                    return o == timeValue;
+                }), 1);
+                // Set default dropdown from time
+                setTimeout(function () {
+                    self.timeFromSelected = $('.ui.dropdown.timeSelection .menu .item:nth-child(1)').attr('data-value');
+                    $('.ui.dropdown.timeSelection').dropdown('set selected', self.timeFromSelected);
+                }, 100);
+
+                // Add events to main calendar
+                _this.$dispatch('refetchEvents');
+                // Remove time that already exist in the schedule
+                _this.filterClassTime();
+            });
+        },
+        teacherSelect: function teacherSelect(teacher) {
+            this.teacherInfo = teacher;
+            $('#btnAddClass, .sched-time, .student-dropdown').removeClass('disabled');
+
+            this.filterClassTime();
+        },
+        studentSelect: function studentSelect(student) {
+            if (student == 0) this.studentID = 0;else this.studentID = student.students.student_id;
+        },
+        filterClassTime: function filterClassTime() {
+            // Clear timeFrom collection
+            this.timeFrom.time = [];
+
+            this.timeFrom.teacher_id = this.teacherInfo.staffs.staff_id;
+            var timeToAppend = moment(this.dateSelected).subtract(1, 'days').format("YYYY-MM-DD 23:00:00"),
+                self = this;
+            for (var i = 1; i <= 24; i++) {
+                timeToAppend = moment(timeToAppend).add(1, 'hours').format();
+                self.timeFrom.time.push(timeToAppend);
+            }
+            _.forEach(self.eventSchedules, function (event_val, key) {
+                _.forEach(self.timeFrom.time, function (time_val, key) {
+                    if (event_val.from == time_val && event_val.teacher_id == self.timeFrom.teacher_id) {
+                        self.timeFrom.time.splice(key, 1);
+                        return false;
+                    }
+                });
+            });
+            // Set default dropdown from time
+            setTimeout(function () {
+                self.timeFromSelected = $('.ui.dropdown.timeSelection .menu .item:nth-child(1)').attr('data-value');
+                $('.ui.dropdown.timeSelection').dropdown('set selected', self.timeFromSelected);
+            }, 100);
+        }
+    },
+
+    ready: function ready() {
+
+        var cal = $(this.$els.minicalendar),
+            self = this;
+
+        $(this.$els.minicalendar).fullCalendar({
+            header: {
+                left: 'prev,next',
+                center: 'title',
+                right: 'today'
+            },
+            defaultView: 'month',
+            editable: false,
+            selectable: true,
+            aspectRatio: 1.23,
+            timeFormat: 'HH:mm',
+
+            dayClick: function dayClick(date) {
+                self.dayClick(date);
+            },
+
+
+            dayRender: function dayRender(date, cell) {
+                if (moment(date).isBefore(self.dateSelected)) {
+                    $(cell).addClass('fc-past');
+                }
+            }
+        });
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override add-class-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"disposeResources\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>Create</strong>\n                    <span>Class Schedule</span>\n                </div>\n                <small class=\"header-subtext\">\n                    Select the date and time of the class to be added.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Class Schedule</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders calendar-modal\">\n                <div class=\"ui inverted active dimmer\" v-show=\"showLoading\">\n                    <div class=\"ui text loader\">Saving class, please wait...</div>\n                </div>\n                <div class=\"ui inverted active dimmer add-class-result\" v-show=\"showResult\">\n                    <div class=\"div-column\" v-show=\"dataResult.success\">\n                        <i class=\"massive teal check circle outline icon\"></i>\n                        <strong>Class schedule successfully added!</strong>\n                        <div class=\"ui white icon button override tiny custom\" @click=\"showResult = !showResult\">OK</div>\n                    </div>\n                    <div class=\"div-column\" v-show=\"dataResult.failed\">\n                        <i class=\"massive red remove circle outline icon\"></i>\n                        <strong>Class schedule adding failed!</strong>\n                        <div class=\"ui white icon button override tiny custom\" @click=\"showResult = !showResult\">OK</div>\n                    </div>\n                    <div class=\"div-column\" v-show=\"dataResult.nohours\">\n                        <i class=\"massive yellow warning sign icon\"></i>\n                        <strong>This student don't have course hours left.</strong>\n                        <div class=\"ui white icon button override tiny custom\" @click=\"showResult = !showResult\">OK</div>\n                    </div>\n                </div>\n                <div class=\"body-form ui grid form override\">\n                    <div class=\"sixteen wide column ui segment loaders\">\n                        <div v-el:minicalendar=\"\" id=\"minicalendar\" v-show=\"!showTime\"></div>\n                        <div class=\"time-selector\" v-show=\"showTime\">\n                            <div class=\"field class-type\">\n                                <div class=\"date-selected-wrap\">\n                                    <label>Date Selected</label>\n                                    <strong>{{ dateSelected | moments \"dddd, MMMM DD, YYYY\" }}</strong>\n                                </div>\n                            </div>\n                            <div class=\"two fields\">\n                                <div class=\"field\">\n                                    <label>TEACHER</label>\n                                    <div class=\"ui search selection dropdown teacher-dropdown teacher\">\n                                        <input type=\"hidden\">\n                                        <div class=\"default text\">Select a teacher</div>\n                                        <i class=\"dropdown icon\"></i>\n                                        <div class=\"menu\">\n                                            <div class=\"item\" v-for=\"teacher in teachers\" @click=\"teacherSelect(teacher)\">\n                                                <h4 class=\"ui image header override\">\n                                                    <img :src=\"root_url + 'images/profile_images/' + teacher.staffs.photo\" class=\"ui mini circular image\">\n                                                    <div class=\"content\">\n                                                        <span>{{ teacher.staffs.firstname + ' ' + teacher.staffs.lastname }}</span>\n                                                        <div class=\"sub header\">\n                                                            <small>{{ teacher.roles.role_name | capitalize }}</small>\n                                                        </div>\n                                                    </div>\n                                                </h4>\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"two fields\">\n                                <div class=\"field\">\n                                    <label>FROM TIME</label>\n                                    <div class=\"ui selection dropdown sched-time timeSelection disabled add\">\n                                        <input type=\"hidden\" v-model=\"timeFromSelected\">\n                                        <div class=\"default text\">Select Time</div>\n                                        <i class=\"dropdown icon\"></i>\n                                        <div class=\"menu\">\n                                            <div class=\"item\" v-for=\"time in timeFrom.time\" track-by=\"$index\" data-value=\"{{ time | moments 'YYYY-MM-DD HH:00:00' }}\">\n                                                {{ time | moments \"hA\" }}\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                                <div class=\"field\">\n                                    <label>TO TIME</label>\n                                    <div class=\"ui selection dropdown sched-time disabled add\">\n                                        <input type=\"hidden\" v-model=\"timeTo\">\n                                        <div class=\"text\">{{ timeTo | moments \"hA\" }}</div>\n                                    </div>\n                                </div>\n                            </div>\n                            <small v-if=\"!addSched\" class=\"student-hours-error\">*Please select another time.</small>\n                            <div class=\"two fields class-type\">\n                                <div class=\"field\">\n                                    <label>CLASS TYPE</label>\n                                    <div class=\"inline fields\">\n                                        <div class=\"field\">\n                                            <div class=\"ui radio checkbox\">\n                                                <input type=\"radio\" name=\"addclasstype\" checked=\"checked\" @click=\"classtype = '1:1'\">\n                                                <label>Single Type (1:1)</label>\n                                            </div>\n                                        </div>\n                                        <div class=\"field\">\n                                            <div class=\"ui radio checkbox\">\n                                                <input type=\"radio\" name=\"addclasstype\" @click=\"classtype = '1:4'\">\n                                                <label>Group Type (1:4)</label>\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"two fields\">\n                                <div class=\"field\">\n                                    <label>STUDENT<small>&nbsp;(Optional)</small></label>\n                                    <div class=\"ui search selection dropdown teacher-dropdown student-dropdown disabled add\">\n                                        <input type=\"hidden\">\n                                        <div class=\"default text\">Select a student</div>\n                                        <i class=\"dropdown icon\"></i>\n                                        <div class=\"menu\">\n                                            <div class=\"item\" @click=\"studentSelect(0)\">\n                                                <h4 class=\"ui image header override\">\n                                                    <img :src=\"root_url + 'images/profile_images/default.png'\" class=\"ui mini circular image\">\n                                                    <div class=\"content\">\n                                                        <span>NO STUDENT SELECTED</span>\n                                                        <div class=\"sub header\">\n                                                            <small>No student selected</small>\n                                                        </div>\n                                                    </div>\n                                                </h4>\n                                            </div>\n                                            <div class=\"item\" v-for=\"student in students\" @click=\"studentSelect(student)\">\n                                                <h4 class=\"ui image header override\">\n                                                    <img :src=\"root_url + 'images/profile_images/' + student.students.photo\" class=\"ui mini circular image\">\n                                                    <div class=\"content\">\n                                                        <span>{{ student.students.firstname + ' ' + student.students.lastname }}</span>\n                                                        <div class=\"sub header\">\n                                                            <small>{{ student.roles.role_name | capitalize }}</small>\n                                                        </div>\n                                                    </div>\n                                                </h4>\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"field select-another-date\">\n                                <small @click=\"showTime = !showTime\">Select another date</small>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer\" v-show=\"showTime\">\n                <div class=\"ui white deny button override tiny custom\" @click=\"disposeResources\" :class=\"{'disabled':showLoading}\">\n                    Cancel\n                </div>\n                <div class=\"ui teal right labeled icon button override tiny custom disabled\" @click=\"addClass\" id=\"btnAddClass\" :class=\"{'disabled':showLoading}\">\n                    Add Class\n                    <i class=\"checkmark icon\"></i>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image add-class-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-5bdbb184", module.exports)
+  } else {
+    hotAPI.update("_v-5bdbb184", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],55:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.classes,
+
+    props: {
+        events: {
+            default: function _default() {
+                return [];
+            }
+        },
+
+        eventSources: {
+            default: function _default() {
+                return [];
+            }
+        },
+
+        editable: {
+            default: function _default() {
+                return false;
+            }
+        },
+
+        selectable: {
+            default: function _default() {
+                return false;
+            }
+        },
+
+        selectHelper: {
+            default: function _default() {
+                return false;
+            }
+        },
+
+        header: {
+            default: function _default() {
+                return {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,listMonth'
+                };
+            }
+        },
+
+        defaultView: {
+            default: function _default() {
+                return 'month';
+            }
+        },
+
+        sync: {
+            default: function _default() {
+                return false;
+            }
+        }
+    },
+
+    ready: function ready() {
+        var cal = $(this.$els.calendar),
+            self = this;
+
+        $(this.$els.calendar).fullCalendar({
+            header: this.header,
+            defaultView: this.defaultView,
+            editable: this.editable,
+            selectable: this.selectable,
+            selectHelper: this.selectHelper,
+            aspectRatio: .98,
+            height: "100%",
+            timeFormat: 'hh(:mm)a',
+            eventLimitText: 'more classes',
+            events: self.events,
+            eventLimit: true,
+            eventSources: self.eventSources,
+
+            eventRender: function eventRender(event, element) {
+                if (this.sync) {
+                    self.events = cal.fullCalendar('clientEvents');
+                }
+                if (!event.availability) {
+                    $(element).find('.fc-content').prepend('<i class="check circle icon green"></i>');
+                } else {
+                    $(element).find('.fc-content').prepend('<i class="ban icon red"></i>');
+                }
+                var date = moment().tz(window.timezone).format();
+                if (moment(event.start.format()).isBefore(date) && $(element).attr('class') != "fc-list-item") {
+                    $(element).prepend('<div class="fc-overlay"></div>');
+                }
+            },
+            eventDestroy: function eventDestroy(event) {
+                if (this.sync) {
+                    self.events = cal.fullCalendar('clientEvents');
+                }
+            },
+            eventClick: function eventClick(event) {
+                self.$dispatch('eventSelected', event);
+            },
+            eventDrop: function eventDrop(event) {
+                self.$dispatch('event-drop', event);
+            },
+            eventResize: function eventResize(event) {
+                self.$dispatch('event-resize', event);
+            },
+            eventLimitClick: function eventLimitClick(cellInfo, jsEvent) {
+                self.$dispatch('eventLimitClick', cellInfo, jsEvent);
+            },
+            select: function select(start, end, jsEvent) {
+                self.$dispatch('eventCreated', {
+                    start: start,
+                    end: end,
+                    allDay: !start.hasTime() && !end.hasTime()
+                });
+            },
+            dayClick: function dayClick(date) {
+                self.$dispatch('daySelected', date);
+            }
+        });
+    },
+
+
+    watch: {
+        events: {
+            deep: true,
+            handler: function handler(val) {
+                $(this.$els.calendar).fullCalendar('rerenderEvents');
+            }
+        }
+    },
+
+    events: {
+        'remove-event': function removeEvent(event) {
+            $(this.$els.calendar).fullCalendar('removeEvents', event.id);
+        },
+        'rerender-events': function rerenderEvents(event) {
+            $(this.$els.calendar).fullCalendar('rerenderEvents');
+        },
+        'refetch-events': function refetchEvents(event) {
+            $(this.$els.calendar).fullCalendar('refetchEvents');
+        },
+        'render-event': function renderEvent(event) {
+            $(this.$els.calendar).fullCalendar('renderEvent', event);
+        },
+        'reload-events': function reloadEvents() {
+            $(this.$els.calendar).fullCalendar('removeEvents');
+            $(this.$els.calendar).fullCalendar('addEventSource', this.events);
+        },
+        'rebuild-sources': function rebuildSources() {
+            var _this = this;
+
+            $(this.$els.calendar).fullCalendar('removeEvents');
+            this.eventSources.map(function (event) {
+                $(_this.$els.calendar).fullCalendar('addEventSource', event);
+            });
+        }
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div v-el:calendar=\"\" id=\"calendar\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-6a14b22a", module.exports)
+  } else {
+    hotAPI.update("_v-6a14b22a", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],56:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.classes,
+
+    props: ['root_url', 'resource'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            selectedDate: moment().tz(window.timezone).format(),
+            events: []
+
+        };
+    },
+
+
+    filter: {
+        customFirst: function customFirst(firstname) {
+            return firstname.split(" ")[0];
+        }
+    },
+
+    methods: {
+        disposeResources: function disposeResources() {
+            $('.delete-class-modal').fadeOut();
+        },
+        cancelDelete: function cancelDelete() {
+            this.disposeResources();
+            setTimeout(function () {
+                $('.view-class-modal').fadeIn();
+            }, 300);
+        },
+        deleteClass: function deleteClass() {
+            var _this = this;
+
+            // Display loading
+            this.showLoading = true;
+
+            this.resource.delete({ class_id: this.events[0].original.class_id + '_' + this.events[0].original.student_id }).then(function (response) {
+                var flashMessage = {
+                    icon: response.data.icon,
+                    header: response.data.header,
+                    body: response.data.body
+                };
+                $('.delete-class-modal').fadeOut();
+                _this.showLoading = false;
+                // Call parent dashboard event to open the "Flash Message"
+                _this.$dispatch('callOpenFlashChild', flashMessage);
+                // Add events to main calendar
+                _this.$dispatch('refetchEvents');
+
+                // Clear form
+                _this.disposeResources();
+            });
+        }
+    },
+
+    events: {
+        getDeleteEvents: function getDeleteEvents(event) {
+            this.events = [];
+            this.events = event;
+            this.selectedDate = event.dateOffset;
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override delete-class-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"disposeResources\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>Delete</strong>\n                    <span>Class Schedule</span>\n                </div>\n                <small class=\"header-subtext\">\n                    Displayed below is the schedule that you want to delete.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Class Schedule</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders\">\n                <div class=\"ui inverted dimmer\" :class=\"{'active': showLoading}\">\n                    <div class=\"ui text loader\">Loading</div>\n                </div>\n                <div class=\"body-title\">\n                    {{ selectedDate | moments \"MMMM DD, YYYY\" }} Classes\n                </div>\n                <div class=\"body-form ui grid form override view-user\">\n                    <div v-for=\"event in events\" class=\"event-wrapper\" data-from=\"{{ event.dateOffset }}\">\n                        <div class=\"event-left\">\n                            <span class=\"fc-time\">\n                                <div class=\"fc-time-only\">{{ event.dateOffset | moments \"hh\" }}</div>\n                                <div class=\"fc-time-zone\">{{ event.dateOffset | moments \"A\" }}</div>\n                            </span>\n                            <span class=\"fc-title ui cards\">\n                                <div class=\"card\">\n                                    <div class=\"content\">\n                                        <img class=\"left floated mini ui image\" :src=\"root_url + 'images/profile_images/' + event.original.staffs.photo\">\n                                        <div class=\"header\">\n                                            {{ event.original.staffs.firstname | cutFirstname event.original.staffs.firstname }} {{ event.original.staffs.lastname }}\n                                        </div>\n                                        <div class=\"meta\">\n                                            <i class=\"info circle icon\"></i>\n                                            Teacher-{{(event.original.class_type == '1:1')?'Single type':'Group type'}}({{event.original.class_type}})/Class No. {{ event.original.class_id }}\n                                        </div>\n                                    </div>\n                                </div>\n                                <div class=\"card\" v-if=\"event.original.student_id != null\">\n                                    <div class=\"content\">\n                                        <img class=\"left floated mini ui image\" :src=\"(event.original.student_id != null)?root_url + 'images/profile_images/' + event.original.students.photo:''\">\n                                        <div class=\"header\">\n                                            {{ (event.original.student_id != null)?event.original.students.firstname+' '+event.original.students.lastname:0}}\n                                        </div>\n                                        <div class=\"meta\">\n                                            <i class=\"ticket icon\"></i>\n                                            Student-Student No. {{(event.original.student_id != null)?event.original.students.student_id:0}}\n                                        </div>\n                                    </div>\n                                </div>\n                            </span>\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer view-user\">\n                <div class=\"ui white left labeled icon deny button override tiny custom\" @click=\"cancelDelete\">\n                    <i class=\"remove icon\"></i>\n                    Cancel\n                </div>\n                <div class=\"ui teal right labeled icon button override tiny custom\" @click=\"deleteClass\">\n                    Delete Class\n                    <i class=\"checkmark icon\"></i>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image delete-class-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-a79597d0", module.exports)
+  } else {
+    hotAPI.update("_v-a79597d0", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],57:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.classes,
+
+    props: ['root_url', 'resource', 'teachers', 'students', 'eventSchedules', 'offset'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            showResult: false,
+            selectedDate: moment().tz(window.timezone).format("YYYY-MM-DD"),
+            timeFromSelected: moment(this.selectedDate).format("YYYY-MM-DD 01:00:00"),
+            classType_single: true,
+            editEvent: [],
+            timeFrom: {
+                time: [],
+                teacher_id: 0
+            }
+
+        };
+    },
+
+
+    filter: {
+        customFirst: function customFirst(firstname) {
+            return firstname.split(" ")[0];
+        }
+    },
+
+    computed: {
+        timeTo: function timeTo() {
+            return moment(this.timeFromSelected).add(1, 'hours').format();
+        }
+    },
+
+    methods: {
+        disposeResources: function disposeResources() {
+            $('.edit-class-modal').fadeOut();
+        },
+        cancelEdit: function cancelEdit() {
+            this.disposeResources();
+            setTimeout(function () {
+                $('.view-class-modal').fadeIn();
+            }, 300);
+        },
+        teacherSelect: function teacherSelect(teacher) {
+            this.editEvent.original.staff_id = teacher.staffs.staff_id;
+        },
+        studentSelect: function studentSelect(student) {
+            if (student == 0) this.editEvent.original.student_id = null;else {
+                this.editEvent.original.student_id = student.students.student_id;
+                this.editEvent.original.students = student.students;
+            }
+        },
+        updateClass: function updateClass() {
+            var _this = this;
+
+            // Display loading
+            this.showLoading = true;
+
+            // Update sched_date from the array
+            this.editEvent.original.sched_date = moment(this.timeFromSelected).subtract(this.offset, 'hours').format("YYYY-MM-DD HH:mm:ss");
+
+            if (this.editEvent.original.student_id == this.editEvent.original.past_student_id) {
+                this.editEvent.original.past_student_id = null;
+                this.editEvent.original.allowHourUpdate = false;
+            } else this.editEvent.original.allowHourUpdate = true;
+
+            this.resource.update({ class_id: this.editEvent.original.class_id }, { data: this.editEvent.original }).then(function (response) {
+                _this.showLoading = false;
+
+                if (response.data == 'nohours') _this.showResult = true;else {
+                    var flashMessage = {
+                        icon: response.data.icon,
+                        header: response.data.header,
+                        body: response.data.body
+                    };
+
+                    $('.edit-class-modal').fadeOut();
+
+                    // Call parent dashboard event to open the "Flash Message"
+                    _this.$dispatch('callOpenFlashChild', flashMessage);
+                    // Add events to main calendar
+                    _this.$dispatch('refetchEvents');
+
+                    // Clear form
+                    _this.disposeResources();
+                }
+            });
+        },
+        filterClassTime: function filterClassTime(teacher_id) {
+            // Clear timeFrom collection
+            this.timeFrom.time = [];
+
+            this.timeFrom.teacher_id = teacher_id;
+            var timeToAppend = moment(this.selectedDate).subtract(1, 'days').format("YYYY-MM-DD 23:00:00"),
+                self = this;
+            for (var i = 1; i <= 24; i++) {
+                timeToAppend = moment(timeToAppend).add(1, 'hours').format();
+                self.timeFrom.time.push(timeToAppend);
+            }
+            _.forEach(self.eventSchedules, function (event_val, key) {
+                _.forEach(self.timeFrom.time, function (time_val, key) {
+                    if (event_val.from == time_val && event_val.teacher_id == self.timeFrom.teacher_id && event_val.from != self.timeFromSelected) {
+                        self.timeFrom.time.splice(key, 1);
+                        return false;
+                    }
+                });
+            });
+
+            // Set default dropdown from time
+            setTimeout(function () {
+                $('.ui.dropdown.timeSelection').dropdown('set selected', moment(self.timeFromSelected).format('YYYY-MM-DD HH:00:00'));
+                $('.ui.dropdown.timeSelection').dropdown('set text', moment(self.timeFromSelected).format('hA'));
+            }, 100);
+        }
+    },
+
+    events: {
+        getEditEvents: function getEditEvents(event) {
+            this.editEvent = [];
+            this.editEvent = event;
+            this.selectedDate = event.dateOffset;
+            this.timeFromSelected = event.dateOffset;
+            this.classType_single = event.original.class_type == '1:1' ? true : false;
+            this.editEvent.original.past_student_id = event.original.student_id;
+            this.editEvent.original.allowHourUpdate = false;
+            this.filterClassTime(event.original.staff_id);
+
+            // Set default dropdown from time
+            setTimeout(function () {
+                $('.ui.dropdown.teacher-dropdown.teacher').dropdown('set selected', event.original.staff_id);
+                if (event.original.student_id != null) $('.ui.dropdown.student-dropdown.student').dropdown('set selected', event.original.student_id);else $('.ui.dropdown.student-dropdown.student').dropdown('restore defaults');
+            }, 100);
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override edit-class-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"cancelEdit\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>Edit</strong>\n                    <span>Class Schedule</span>\n                </div>\n                <small class=\"header-subtext\">\n                    Double check first before changing the class schedule.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Class Schedule</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders\">\n                <div class=\"ui inverted active dimmer\" v-show=\"showLoading\">\n                    <div class=\"ui text loader\">Loading</div>\n                </div>\n                <div class=\"ui inverted active dimmer add-class-result\" v-show=\"showResult\">\n                    <div class=\"div-column\">\n                        <i class=\"massive yellow warning sign icon\"></i>\n                        <strong>This student don't have course hours left.</strong>\n                        <div class=\"ui white icon button override tiny custom\" @click=\"showResult = !showResult\">OK</div>\n                    </div>\n                </div>\n                <div class=\"body-title\">\n                    {{ selectedDate | moments \"MMMM DD, YYYY\" }} Class\n                </div>\n                <div class=\"body-form ui grid form override\">\n                    <div class=\"sixteen wide column ui segment loaders\">\n                        <div class=\"time-selector\">\n                            <div class=\"two fields\">\n                                <div class=\"field\">\n                                    <label>TEACHER</label>\n                                    <div class=\"ui search selection dropdown teacher-dropdown teacher\">\n                                        <input type=\"hidden\">\n                                        <div class=\"default text\">Select a teacher</div>\n                                        <i class=\"dropdown icon\"></i>\n                                        <div class=\"menu\">\n                                            <div class=\"item\" v-for=\"teacher in teachers\" data-value=\"{{teacher.staffs.staff_id}}\" @click=\"teacherSelect(teacher)\">\n                                                <h4 class=\"ui image header override\">\n                                                    <img :src=\"root_url + 'images/profile_images/' + teacher.staffs.photo\" class=\"ui mini circular image\">\n                                                    <div class=\"content\">\n                                                        <span>{{ teacher.staffs.firstname + ' ' + teacher.staffs.lastname }}</span>\n                                                        <div class=\"sub header\">\n                                                            <small>{{ teacher.roles.role_name | capitalize }}</small>\n                                                        </div>\n                                                    </div>\n                                                </h4>\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"two fields\">\n                                <div class=\"field\">\n                                    <label>FROM TIME</label>\n                                    <div class=\"ui selection dropdown sched-time timeSelection\">\n                                        <input type=\"hidden\" v-model=\"timeFromSelected\">\n                                        <div class=\"default text\">Select Time</div>\n                                        <i class=\"dropdown icon\"></i>\n                                        <div class=\"menu\">\n                                            <div class=\"item\" v-for=\"time in timeFrom.time\" track-by=\"$index\" data-value=\"{{ time | moments 'YYYY-MM-DD HH:00:00' }}\">\n                                                {{ time | moments \"hA\" }}\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                                <div class=\"field\">\n                                    <label>TO TIME</label>\n                                    <div class=\"ui selection dropdown\">\n                                        <input type=\"hidden\">\n                                        <div class=\"text\">{{ timeTo | moments \"hA\" }}</div>\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"two fields class-type\">\n                                <div class=\"field\">\n                                    <label>CLASS TYPE</label>\n                                    <div class=\"inline fields\">\n                                        <div class=\"field\">\n                                            <div class=\"ui radio checkbox\">\n                                                <input type=\"radio\" name=\"editclasstype\" @click=\"editEvent.original.class_type = '1:1'\" :checked=\"classType_single\">\n                                                <label>Single Type (1:1)</label>\n                                            </div>\n                                        </div>\n                                        <div class=\"field\">\n                                            <div class=\"ui radio checkbox\">\n                                                <input type=\"radio\" name=\"editclasstype\" @click=\"editEvent.original.class_type = '1:4'\" :checked=\"!classType_single\">\n                                                <label>Group Type (1:4)</label>\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                            <div class=\"two fields\">\n                                <div class=\"field\">\n                                    <label>STUDENT<small>&nbsp;(Optional)</small></label>\n                                    <div class=\"ui search selection dropdown teacher-dropdown student-dropdown student\">\n                                        <input type=\"hidden\">\n                                        <div class=\"default text\">Select a student</div>\n                                        <i class=\"dropdown icon\"></i>\n                                        <div class=\"menu\">\n                                            <div class=\"item\" data-value=\"0\" @click=\"studentSelect(0)\">\n                                                <h4 class=\"ui image header override\">\n                                                    <img :src=\"root_url + 'images/profile_images/default.png'\" class=\"ui mini circular image\">\n                                                    <div class=\"content\">\n                                                        <span>NO STUDENT SELECTED</span>\n                                                        <div class=\"sub header\">\n                                                            <small>No student selected</small>\n                                                        </div>\n                                                    </div>\n                                                </h4>\n                                            </div>\n                                            <div class=\"item\" v-for=\"student in students\" data-value=\"{{student.students.student_id}}\" @click=\"studentSelect(student)\">\n                                                <h4 class=\"ui image header override\">\n                                                    <img :src=\"root_url + 'images/profile_images/' + student.students.photo\" class=\"ui mini circular image\">\n                                                    <div class=\"content\">\n                                                        <span>{{ student.students.firstname + ' ' + student.students.lastname }}</span>\n                                                        <div class=\"sub header\">\n                                                            <small>{{ student.roles.role_name | capitalize }}</small>\n                                                        </div>\n                                                    </div>\n                                                </h4>\n                                            </div>\n                                        </div>\n                                    </div>\n                                </div>\n                            </div>\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer view-user\">\n                <div class=\"ui white left labeled icon deny button override tiny custom\" @click=\"cancelEdit\">\n                    <i class=\"remove icon\"></i>\n                    Cancel\n                </div>\n                <div class=\"ui teal right labeled icon button override tiny custom\" @click=\"updateClass\">\n                    Update Class\n                    <i class=\"checkmark icon\"></i>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image edit-class-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-693db392", module.exports)
+  } else {
+    hotAPI.update("_v-693db392", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],58:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.classes,
+
+    props: ['root_url'],
+
+    data: function data() {
+        return {
+
+            showLoading: false,
+            selectedDate: moment().tz(window.timezone).format(),
+            events: []
+
+        };
+    },
+
+
+    filter: {
+        customFirst: function customFirst(firstname) {
+            return firstname.split(" ")[0];
+        }
+    },
+
+    methods: {
+        disposeResources: function disposeResources() {
+            $('.view-class-modal').fadeOut();
+        },
+        editClass: function editClass(event) {
+            this.$dispatch('editClass', event);
+        },
+        deleteClass: function deleteClass(event) {
+            this.$dispatch('deleteClass', event);
+        }
+    },
+
+    events: {
+        viewEvents: function viewEvents(events, date) {
+            this.events = [];
+            this.events = events;
+            this.selectedDate = date;
+            var self = this;
+            setTimeout(function () {
+                $('.event-wrapper').each(function (index, element) {
+                    $(this).find('.fc-overlay').remove();
+                    var date = moment().tz(window.timezone).format();
+                    var from = moment($(this).attr('data-from')).format();
+                    if (moment(from).isBefore(date)) {
+                        $(this).find('.event-right').remove();
+                        $(this).append('<div class="fc-overlay"></div>');
+                    }
+                });
+            }, 100);
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"general-container-override view-class-modal user-modal\">\n    <div class=\"general-wrap-override\">\n        <div class=\"modal-container\">\n            <span class=\"modal-close\" @click=\"disposeResources\">\n                <i class=\"remove icon\"></i>\n            </span>\n            <div class=\"modal-header\">\n                <div class=\"header-title\">\n                    <strong>View</strong>\n                    <span>Class Schedule</span>\n                </div>\n                <small class=\"header-subtext\">\n                    Displayed below are the classes for this today.\n                </small>\n            </div>\n            <div class=\"modal-nav override\">\n                <strong>Class Schedule</strong>\n            </div>\n            <div class=\"modal-body ui segment loaders\">\n                <div class=\"body-title\">\n                    {{ selectedDate | moments \"MMMM DD, YYYY\" }} Classes\n                </div>\n                <div class=\"body-form ui grid form override view-user\">\n                    <div v-for=\"event in events\" class=\"event-wrapper\" data-from=\"{{ event.dateOffset }}\">\n                        <div class=\"event-left\">\n                            <span class=\"fc-time\">\n                                <div class=\"fc-time-only\">{{ event.dateOffset | moments \"hh\" }}</div>\n                                <div class=\"fc-time-zone\">{{ event.dateOffset | moments \"A\" }}</div>\n                            </span>\n                            <span class=\"fc-title ui cards\">\n                                <div class=\"card\">\n                                    <div class=\"content\">\n                                        <img class=\"left floated mini ui image\" :src=\"root_url + 'images/profile_images/' + event.original.staffs.photo\">\n                                        <div class=\"header\">\n                                            {{ event.original.staffs.firstname | cutFirstname event.original.staffs.firstname }} {{ event.original.staffs.lastname }}\n                                        </div>\n                                        <div class=\"meta\">\n                                            <i class=\"info circle icon\"></i>\n                                            Teacher-{{(event.original.class_type == '1:1')?'Single type':'Group type'}}({{event.original.class_type}})/Class No. {{ event.original.class_id }}\n                                        </div>\n                                    </div>\n                                </div>\n                                <div class=\"card\" v-if=\"event.original.student_id != null\">\n                                    <div class=\"content\">\n                                        <img class=\"left floated mini ui image\" :src=\"(event.original.student_id != null)?root_url + 'images/profile_images/' + event.original.students.photo:''\">\n                                        <div class=\"header\">\n                                            {{ (event.original.student_id != null)?event.original.students.firstname+' '+event.original.students.lastname:0}}\n                                        </div>\n                                        <div class=\"meta\">\n                                            <i class=\"ticket icon\"></i>\n                                            Student-Student No. {{(event.original.student_id != null)?event.original.students.student_id:0}}\n                                        </div>\n                                    </div>\n                                </div>\n                            </span>\n                        </div>\n                        <div class=\"event-right\">\n                            <i class=\"edit icon grey\" @click=\"editClass(event)\"></i>\n                            <i class=\"remove circle icon grey\" @click=\"deleteClass(event)\"></i>\n                        </div>\n                    </div>\n                </div>\n            </div>\n            <div class=\"modal-footer view-user\">\n                <div class=\"ui teal deny button override tiny custom\" @click=\"disposeResources\">\n                    Close\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<div class=\"bg-no-image view-class-modal user-modal\"></div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-99a9a55c", module.exports)
+  } else {
+    hotAPI.update("_v-99a9a55c", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],59:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+
+    parent: Dashboard.app,
+
+    props: ['breadcrumbs'],
+
+    data: function data() {
+        return {
+
+            cur_breadcrumbs: { name: 'Dashboard', icon: 'dashboard' }
+
+        };
+    },
+    ready: function ready() {
+
+        this.breadcrumbs = this.cur_breadcrumbs;
+    }
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"ui segment override wrapper general-body content\">\n    <div class=\"ui segment override header content-header\">\n        <div class=\"header-title\">\n            <i class=\"dashboard icon\"></i>\n            <div class=\"title\">Dashboard</div>\n        </div>\n    </div>\n\n    <div class=\"general-body-content content-body override\">\n        <h1>DASHBOARD</h1>\n        <small>Add home contents inside here.</small>\n    </div>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-78cd3c0d", module.exports)
+  } else {
+    hotAPI.update("_v-78cd3c0d", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],60:[function(require,module,exports){
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"ui segment override wrapper general-body content\">\n    <div class=\"ui segment override header content-header\">\n        <div class=\"header-title\">\n            <i class=\"ban icon\"></i>\n            <div class=\"title\">Error</div>\n        </div>\n    </div>\n\n    <div class=\"general-body-content content-body override\">\n        <h1>Oooops!</h1>\n        <small>The page you are looking for cannot be found.</small>\n    </div>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-5030024a", module.exports)
+  } else {
+    hotAPI.update("_v-5030024a", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],61:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -27719,13 +32651,115 @@ if (module.hot) {(function () {  module.hot.accept()
     hotAPI.update("_v-090555f3", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
   }
 })()}
-},{"vue":5,"vue-hot-reload-api":3}],8:[function(require,module,exports){
+},{"vue":41,"vue-hot-reload-api":38}],62:[function(require,module,exports){
 'use strict';
 
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+    data: function data() {
+        return {
+            flashTimeout: '',
+            closed: false,
+            flashMessage: {
+                messageIcon: '',
+                messageHeader: '',
+                messageBody: ''
+            }
+        };
+    },
+
+
+    events: {
+        openFlash: function openFlash(flashMessage) {
+            // Show flash message
+            $('.flash-modal-wrap').transition('fly top');
+
+            // Set flash message
+            this.$set('flashMessage', {
+                messageIcon: flashMessage.icon,
+                messageHeader: flashMessage.header,
+                messageBody: flashMessage.body
+            });
+
+            // Close flash message after 5 seconds
+            var self = this;
+            this.closed = false;
+            this.flashTimeout = setTimeout(function () {
+                if (!self.closed) self.closeFlash();
+            }, 5000);
+        }
+    },
+
+    methods: {
+        closeFlash: function closeFlash() {
+            this.closed = true;
+            clearTimeout(this.flashTimeout);
+
+            // Close flash message
+            $('.flash-modal-wrap').transition('tada').transition('fly left');
+        }
+    }
+
+};
+if (module.exports.__esModule) module.exports = module.exports.default
+;(typeof module.exports === "function"? module.exports.options: module.exports).template = "\n<div class=\"ui grid segment flash-modal-wrap\" @click=\"closeFlash\">\n    <div class=\"row\">\n        <div class=\"three wide column modal-icon\">\n            <i class=\"circular inverted icon big\" :class=\"flashMessage.messageIcon\"></i>\n        </div>\n        <div class=\"twelve wide column message-content\">\n            <div class=\"message-header\">\n                <strong>{{ flashMessage.messageHeader }}</strong>\n                <i class=\"remove icon\"></i>\n            </div>\n            <div class=\"message-body\">\n                <small>{{ flashMessage.messageBody }}</small>\n            </div>\n        </div>\n    </div>\n</div>\n"
+if (module.hot) {(function () {  module.hot.accept()
+  var hotAPI = require("vue-hot-reload-api")
+  hotAPI.install(require("vue"), true)
+  if (!hotAPI.compatible) return
+  if (!module.hot.data) {
+    hotAPI.createRecord("_v-7bd5e5dc", module.exports)
+  } else {
+    hotAPI.update("_v-7bd5e5dc", module.exports, (typeof module.exports === "function" ? module.exports.options : module.exports).template)
+  }
+})()}
+},{"vue":41,"vue-hot-reload-api":38}],63:[function(require,module,exports){
+'use strict';
+
+// Global Dashboard Variable
+window.Dashboard = {
+    app: '',
+    e404: '',
+    dashboard: '',
+    staff: ''
+};
+
 /**
- * Require necessary variables/data
+ * First we will load all of this project's JavaScript dependencies which
+ * include Vue and Vue Resource. This gives a great starting point for
+ * building robust, powerful web applications using Vue and Laravel.
  */
+
 require('./bootstrap');
+
+/**
+ * Next, we will create a fresh Vue application instance and attach it to
+ * the body of the page. From here, you may begin adding components to
+ * the application, or feel free to tweak this setup for your needs.
+ */
+
+/**
+ * Register Global Components
+ */
+Vue.component('clock', require('./components/General/Clock.vue'));
+Vue.component('modal', require('./components/General/Modal.vue'));
+
+// Error Component
+Dashboard.e404 = require('./components/E404.vue');
+
+// Home Component
+Dashboard.dashboard = require('./components/Dashboard.vue');
+
+// Administrator Components
+Dashboard.administrator = require('./components/Administrator.vue');
+
+// Academics Components
+Dashboard.academics = require('./components/Academics.vue');
+
+// Classes Components
+Dashboard.classes = require('./components/Classes.vue');
 
 /**
  * Register Global Filters
@@ -27733,72 +32767,60 @@ require('./bootstrap');
 Vue.filter('momentformat', function (value, format) {
     return moment(value).tz(window.timezone).format(format);
 });
+Vue.filter('cutFirstname', function (value) {
+    return value.split(" ")[0];
+});
 
-/**
- * Register Global Components
- */
-Vue.component('clock', require('./components/General/Clock.vue'));
+// Define routes
+var routes = [{ path: '/dashboard', name: 'dashboard', component: Dashboard.dashboard }, { path: '/admin', name: 'administrator', component: Dashboard.administrator }, { path: '/acad', name: 'academics', component: Dashboard.academics }, { path: '/classes', name: 'classes', component: Dashboard.classes }];
 
-/**
- * Instantiate Vue intance
- */
-var app = new Vue({
-    el: '#login',
+// Create router instance
+var router = new VueRouter({
+    root: window.url_rootDIR,
+    routes: routes // short for routes: routes
+});
 
-    data: function data() {
-        return {
-
-            msgSuccess: '',
-            msgError: '',
-            formLoad: false
-
-        };
-    },
-
+// Start Router
+Dashboard.app = new Vue({
+    router: router,
     methods: {
 
-        loginFormSubmit: function loginFormSubmit() {
-            // Check if username is already logged in
+        openFlash: function openFlash(flashMessage) {
+            this.$broadcast('openFlash', flashMessage);
         },
 
-        emailFormSubmit: function emailFormSubmit() {
-            var emailData = $("#emailForm").serializeArray(),
-                self = this;
-            var data = {
-                _token: emailData[0].value,
-                email: emailData[1].value
-            };
-            this.clearData();
-            this.$http.post('email', data).then(function (response) {
-                self.msgSuccess = response.data.success;
-                self.formLoad = false;
-            }, function (response) {
-                self.msgError = response.data.error;
-                self.formLoad = false;
-            });
+        setBreadcrumb: function setBreadcrumb(name, icon, event) {
+            this.breadcrumbs.name = name;
+            this.breadcrumbs.icon = icon;
+            //router.push($(event.currentTarget).attr('data-id'));
         },
-
-        clearData: function clearData() {
-            this.msgError = '';
-            this.msgSuccess = '';
-            this.formLoad = true;
+        showSubNavigation: function showSubNavigation(e) {
+            var subnav = $(e.target).parent().find('.sub-navigation');
+            if ($(subnav).css('display') == 'none') $(subnav).slideDown();else $(subnav).slideUp();
         }
     },
 
-    mounted: function mounted() {
-        /*if ('serviceWorker' in navigator) {
-        navigator.serviceWorker
-        .register('cache.js', { scope: '' })
-        .then(function(registration) {
-         console.log("Service Worker Registered");
-        })
-        .catch(function(err) {
-         console.log("Service Worker Failed to Register", err);
-        })
-        }*/
+    events: {
+
+        callOpenFlashChild: function callOpenFlashChild(flashMessage) {
+            this.openFlash(flashMessage);
+        }
+
+    },
+
+    ready: function ready() {
+
+        $('.ui.dropdown').dropdown();
+    },
+
+    data: {
+        toggleLeft: false,
+        breadcrumbs: { name: 'Dashboard', icon: 'dashboard' },
+        country_flags: [{ flag: 'ad', country: 'Andorra' }, { flag: 'ae', country: 'U.A.E' }, { flag: 'af', country: 'Afghanistan' }, { flag: 'ag', country: 'Antigua' }, { flag: 'ai', country: 'Anguilla' }, { flag: 'al', country: 'Albania' }, { flag: 'am', country: 'Armenia' }, { flag: 'an', country: 'Netherlands Antilles' }, { flag: 'ao', country: 'Angola' }, { flag: 'ar', country: 'Argentina' }, { flag: 'as', country: 'American Samoa' }, { flag: 'at', country: 'Austria' }, { flag: 'au', country: 'Australia' }, { flag: 'aw', country: 'Aruba' }, { flag: 'ax', country: 'Aland Islands' }, { flag: 'az', country: 'Azerbaijan' }, { flag: 'ba', country: 'Bosnia' }, { flag: 'bb', country: 'Barbados' }, { flag: 'bd', country: 'Bangladesh' }, { flag: 'be', country: 'Belgium' }, { flag: 'bf', country: 'Burkina Faso' }, { flag: 'bg', country: 'Bulgaria' }, { flag: 'bh', country: 'Bahrain' }, { flag: 'bi', country: 'Burundi' }, { flag: 'bj', country: 'Benin' }, { flag: 'bm', country: 'Bermuda' }, { flag: 'bn', country: 'Brunei' }, { flag: 'bo', country: 'Bolivia' }, { flag: 'br', country: 'Brazil' }, { flag: 'bs', country: 'Bahamas' }, { flag: 'bt', country: 'Bhutan' }, { flag: 'bv', country: 'Bouvet Island' }, { flag: 'bw', country: 'Botswana' }, { flag: 'by', country: 'Belarus' }, { flag: 'bz', country: 'Belize' }, { flag: 'ca', country: 'Canada' }, { flag: 'cc', country: 'Cocos Islands' }, { flag: 'cd', country: 'Congo' }, { flag: 'cf', country: 'Central African Republic' }, { flag: 'cg', country: 'Congo Brazzaville' }, { flag: 'ch', country: 'Switzerland' }, { flag: 'ci', country: 'Cote Divoire' }, { flag: 'ck', country: 'Cook Islands' }, { flag: 'cl', country: 'Chile' }, { flag: 'cm', country: 'Cameroon' }, { flag: 'cn', country: 'China' }, { flag: 'co', country: 'Colombia' }, { flag: 'cr', country: 'Costa Rica' }, { flag: 'cs', country: 'Serbia' }, { flag: 'cu', country: 'Cuba' }, { flag: 'cv', country: 'Cape Verde' }, { flag: 'cx', country: 'Christmas Island' }, { flag: 'cy', country: 'Cyprus' }, { flag: 'cz', country: 'Czech Republic' }, { flag: 'de', country: 'Germany' }, { flag: 'dj', country: 'Djibouti' }, { flag: 'dk', country: 'Denmark' }, { flag: 'dm', country: 'Dominica' }, { flag: 'do', country: 'Dominican Republic' }, { flag: 'dz', country: 'Algeria' }, { flag: 'ec', country: 'Ecuador' }, { flag: 'ee', country: 'Estonia' }, { flag: 'eg', country: 'Egypt' }, { flag: 'eh', country: 'Western Sahara' }, { flag: 'er', country: 'Eritrea' }, { flag: 'es', country: 'Spain' }, { flag: 'et', country: 'Ethiopia' }, { flag: 'eu', country: 'European Union' }, { flag: 'fi', country: 'Finland' }, { flag: 'fj', country: 'Fiji' }, { flag: 'fk', country: 'Falkland Islands' }, { flag: 'fm', country: 'Micronesia' }, { flag: 'fo', country: 'Faroe Islands' }, { flag: 'fr', country: 'France' }, { flag: 'ga', country: 'Gabon' }, { flag: 'gb', country: 'United Kingdom' }, { flag: 'gb sct', country: 'Scotland' }, { flag: 'gb wls', country: 'Wales' }, { flag: 'gd', country: 'Grenada' }, { flag: 'ge', country: 'Georgia' }, { flag: 'gf', country: 'French Guiana' }, { flag: 'gh', country: 'Ghana' }, { flag: 'gi', country: 'Gibraltar' }, { flag: 'gl', country: 'Greenland' }, { flag: 'gm', country: 'Gambia' }, { flag: 'gn', country: 'Guinea' }, { flag: 'gp', country: 'Guadeloupe' }, { flag: 'gq', country: 'Equatorial Guinea' }, { flag: 'gr', country: 'Greece' }, { flag: 'gs', country: 'Sandwich Islands' }, { flag: 'gt', country: 'Guatemala' }, { flag: 'gu', country: 'Guam' }, { flag: 'gw', country: 'Guinea-bissau' }, { flag: 'gy', country: 'Guyana' }, { flag: 'hk', country: 'Hong Kong' }, { flag: 'hm', country: 'Heard Island' }, { flag: 'hn', country: 'Honduras' }, { flag: 'hr', country: 'Croatia' }, { flag: 'ht', country: 'Haiti' }, { flag: 'hu', country: 'Hungary' }, { flag: 'id', country: 'Indonesia' }, { flag: 'ie', country: 'Ireland' }, { flag: 'il', country: 'Israel' }, { flag: 'in', country: 'India' }, { flag: 'io', country: 'Indian Ocean Territory' }, { flag: 'iq', country: 'Iraq' }, { flag: 'ir', country: 'Iran' }, { flag: 'is', country: 'Iceland' }, { flag: 'it', country: 'Italy' }, { flag: 'jm', country: 'Jamaica' }, { flag: 'jo', country: 'Jordan' }, { flag: 'jp', country: 'Japan' }, { flag: 'ke', country: 'Kenya' }, { flag: 'kg', country: 'Kyrgyzstan' }, { flag: 'kh', country: 'Cambodia' }, { flag: 'ki', country: 'Kiribati' }, { flag: 'km', country: 'Comoros' }, { flag: 'kn', country: 'Saint Kitts And Nevis' }, { flag: 'kp', country: 'North Korea' }, { flag: 'kr', country: 'South Korea' }, { flag: 'kw', country: 'Kuwait' }, { flag: 'ky', country: 'Cayman Islands' }, { flag: 'kz', country: 'Kazakhstan' }, { flag: 'la', country: 'Laos' }, { flag: 'lb', country: 'Lebanon' }, { flag: 'lc', country: 'Saint Lucia' }, { flag: 'li', country: 'Liechtenstein' }, { flag: 'lk', country: 'Sri Lanka' }, { flag: 'lr', country: 'Liberia' }, { flag: 'ls', country: 'Lesotho' }, { flag: 'lt', country: 'Lithuania' }, { flag: 'lu', country: 'Luxembourg' }, { flag: 'lv', country: 'Latvia' }, { flag: 'ly', country: 'Libya' }, { flag: 'ma', country: 'Morocco' }, { flag: 'mc', country: 'Monaco' }, { flag: 'md', country: 'Moldova' }, { flag: 'me', country: 'Montenegro' }, { flag: 'mg', country: 'Madagascar' }, { flag: 'mh', country: 'Marshall Islands' }, { flag: 'mk', country: 'Macedonia' }, { flag: 'ml', country: 'Mali' }, { flag: 'mm', country: 'Burma' }, { flag: 'mn', country: 'Mongolia' }, { flag: 'mo', country: 'Macau' }, { flag: 'mp', country: 'Northern Mariana Islands' }, { flag: 'mq', country: 'Martinique' }, { flag: 'mr', country: 'Mauritania' }, { flag: 'ms', country: 'Montserrat' }, { flag: 'mt', country: 'Malta' }, { flag: 'mu', country: 'Mauritius' }, { flag: 'mv', country: 'Maldives' }, { flag: 'mw', country: 'Malawi' }, { flag: 'mx', country: 'Mexico' }, { flag: 'my', country: 'Malaysia' }, { flag: 'mz', country: 'Mozambique' }, { flag: 'na', country: 'Namibia' }, { flag: 'nc', country: 'New Caledonia' }, { flag: 'ne', country: 'Niger' }, { flag: 'nf', country: 'Norfolk Island' }, { flag: 'ng', country: 'Nigeria' }, { flag: 'ni', country: 'Nicaragua' }, { flag: 'nl', country: 'Netherlands' }, { flag: 'no', country: 'Norway' }, { flag: 'np', country: 'Nepal' }, { flag: 'nr', country: 'Nauru' }, { flag: 'nu', country: 'Niue' }, { flag: 'nz', country: 'New Zealand' }, { flag: 'om', country: 'Oman' }, { flag: 'pa', country: 'Panama' }, { flag: 'pe', country: 'Peru' }, { flag: 'pf', country: 'French Polynesia' }, { flag: 'pg', country: 'New Guinea' }, { flag: 'ph', country: 'Philippines' }, { flag: 'pk', country: 'Pakistan' }, { flag: 'pl', country: 'Poland' }, { flag: 'pm', country: 'Saint Pierre' }, { flag: 'pn', country: 'Pitcairn Islands' }, { flag: 'pr', country: 'Puerto Rico' }, { flag: 'ps', country: 'Palestine' }, { flag: 'pt', country: 'Portugal' }, { flag: 'pw', country: 'Palau' }, { flag: 'py', country: 'Paraguay' }, { flag: 'qa', country: 'Qatar' }, { flag: 're', country: 'Reunion' }, { flag: 'ro', country: 'Romania' }, { flag: 'rs', country: 'Serbia' }, { flag: 'ru', country: 'Russia' }, { flag: 'rw', country: 'Rwanda' }, { flag: 'sa', country: 'Saudi Arabia' }, { flag: 'sb', country: 'Solomon Islands' }, { flag: 'sc', country: 'Seychelles' }, { flag: 'sd', country: 'Sudan' }, { flag: 'se', country: 'Sweden' }, { flag: 'sg', country: 'Singapore' }, { flag: 'sh', country: 'Saint Helena' }, { flag: 'si', country: 'Slovenia' }, { flag: 'sj', country: 'Jan Mayen' }, { flag: 'sk', country: 'Slovakia' }, { flag: 'sl', country: 'Sierra Leone' }, { flag: 'sm', country: 'San Marino' }, { flag: 'sn', country: 'Senegal' }, { flag: 'so', country: 'Somalia' }, { flag: 'sr', country: 'Suriname' }, { flag: 'st', country: 'Sao Tome' }, { flag: 'sv', country: 'El Salvador' }, { flag: 'sy', country: 'Syria' }, { flag: 'sz', country: 'Swaziland' }, { flag: 'tc', country: 'Caicos Islands' }, { flag: 'td', country: 'Chad' }, { flag: 'tf', country: 'French Territories' }, { flag: 'tg', country: 'Togo' }, { flag: 'th', country: 'Thailand' }, { flag: 'tj', country: 'Tajikistan' }, { flag: 'tk', country: 'Tokelau' }, { flag: 'tl', country: 'Timorleste' }, { flag: 'tm', country: 'Turkmenistan' }, { flag: 'tn', country: 'Tunisia' }, { flag: 'to', country: 'Tonga' }, { flag: 'tr', country: 'Turkey' }, { flag: 'tt', country: 'Trinidad' }, { flag: 'tv', country: 'Tuvalu' }, { flag: 'tw', country: 'Taiwan' }, { flag: 'tz', country: 'Tanzania' }, { flag: 'ua', country: 'Ukraine' }, { flag: 'ug', country: 'Uganda' }, { flag: 'um', country: 'Us Minor Islands' }, { flag: 'us', country: 'United States' }, { flag: 'uy', country: 'Uruguay' }, { flag: 'uz', country: 'Uzbekistan' }, { flag: 'va', country: 'Vatican City' }, { flag: 'vc', country: 'Saint Vincent' }, { flag: 've', country: 'Venezuela' }, { flag: 'vg', country: 'British Virgin Islands' }, { flag: 'vi', country: 'Us Virgin Islands' }, { flag: 'vn', country: 'Vietnam' }, { flag: 'vu', country: 'Vanuatu' }, { flag: 'wf', country: 'Wallis And Futuna' }, { flag: 'ws', country: 'Samoa' }, { flag: 'ye', country: 'Yemen' }, { flag: 'yt', country: 'Mayotte' }, { flag: 'za', country: 'South Africa' }, { flag: 'zm', country: 'Zambia' }, { flag: 'zw', country: 'Zimbabwe' }]
     }
-});
 
-},{"./bootstrap":6,"./components/General/Clock.vue":7}]},{},[8]);
+}).$mount('#dashcontainer');
 
-//# sourceMappingURL=login.js.map
+},{"./bootstrap":42,"./components/Academics.vue":43,"./components/Administrator.vue":48,"./components/Classes.vue":53,"./components/Dashboard.vue":59,"./components/E404.vue":60,"./components/General/Clock.vue":61,"./components/General/Modal.vue":62}]},{},[63]);
+
+//# sourceMappingURL=dashboard.js.map

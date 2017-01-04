@@ -1,0 +1,317 @@
+<template>
+    <div>
+        <div class="general-container-override edit-user-modal user-modal">
+            <div class="general-wrap-override">
+                <div class="modal-container">
+                    <span class="modal-close" @click="disposeResources">
+                        <i class="remove icon"></i>
+                    </span>
+                    <div class="modal-header">
+                        <div class="header-title">
+                            <strong>Update</strong>
+                            <span>user profile</span>
+                        </div>
+                        <small class="header-subtext">
+                            Fill out the form below with valid information.
+                        </small>
+                    </div>
+                    <div class="modal-nav override">
+                        <strong>Administrator Account</strong>
+                    </div>
+                    <div class="modal-body ui segment loaders">
+                        <div class="ui inverted dimmer" :class="{ 'active':  showLoading }">
+                            <div class="ui text loader">Loading</div>
+                        </div>
+                        <div class="capture-container" v-show="showCamera">
+    		                <div class="camera-wrap">
+    		                    <strong>Webcamera</strong>
+    		                    <div id="video-camera-edit" class="video-camera edit-camera"></div>
+    		                    <div class="camera-buttons" v-show="showCaptureBtn">
+    		                        <button class="ui labeled icon button override mini teal" @click="takeSnapshot">
+    		                            <i class="camera icon"></i>
+    		                            Capture
+    		                        </button>
+    		                        <button class="ui right labeled icon button override tiny red" @click="closeCamera">
+    		                            <i class="remove icon"></i>
+    		                            Cancel
+    		                        </button>
+    		                    </div>
+    		                    <div class="camera-buttons" v-show="!showCaptureBtn">
+    		                        <button class="ui labeled icon button override tiny teal" @click="setCameraImage">
+    		                            <i class="check icon"></i>
+    		                            Save
+    		                        </button>
+    		                        <button class="ui right labeled icon button override tiny red" @click="retakeSnapshot">
+    		                            <i class="camera icon"></i>
+    		                            Re-Capture
+    		                        </button>
+    		                    </div>
+    		                </div>
+    		            </div>
+                        <div class="body-title">
+                            User <strong>{{ newUser.username }}</strong> Informations
+                        </div>
+                        <div class="body-form ui grid form override">
+                            <div class="seven wide column profile-photo">
+                                <img class="ui tiny circular image overrides" :src="newUser.imageURI.src">
+                                <div class="ui pointing icon dropdown override cmbProfilePhoto">
+                                    <strong>Choose Picture</strong>
+                                    <div class="menu">
+                                        <div class="header">Profile Picture</div>
+                                        <div class="divider"></div>
+                                        <div class="item" @click="openCamera">
+                                            <i class="photo icon"></i>
+                                            Take Photo
+                                        </div>
+                                        <div class="item" @click="selectPhotoUpload">
+                                        	<input type="file" accept="image/*" v-el:upload-photo class="hidden override">
+                                            <i class="upload icon"></i>
+                                            Upload Photo
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="nine wide column">
+                                <div class="field" :class="{ 'error': !validation.firstname && showError }">
+                                    <label>First Name</label>
+                                    <input placeholder="First Name" type="text" v-model="newUser.firstname" autofocus>
+                                </div>
+                                <div class="field" :class="{ 'error': !validation.lastname && showError }">
+                                    <label>Last Name</label>
+                                    <input placeholder="Last Name" type="text" v-model="newUser.lastname">
+                                </div>
+                            </div>
+                            <div class="sixteen wide column">
+                                <div class="field" :class="{ 'error': (!validation.email_empty || !validation.email_check) && showError }">
+                                    <label>Email Address</label>
+                                    <input placeholder="Email Address" type="text" v-model="newUser.email_address">
+                                </div>
+                            </div>
+                            <div class="sixteen wide column">
+                                <div class="ui mini error message override" v-if="!isValid && showError">
+                                    <div class="header">
+                                        There was some errors with your submission
+                                    </div>
+                                    <ul class="list">
+                                        <li v-show="!validation.firstname">You need to enter your Firstname.</li>
+                                        <li v-show="!validation.lastname">You need to enter your Lastname.</li>
+                                        <li v-show="!validation.email_empty">You need to enter your Email Address.</li>
+                                        <li v-show="!validation.email_check">Please enter a valid Email Address.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="ui white deny button override tiny custom" @click="disposeResources">
+                            Cancel
+                        </div>
+                        <div class="ui teal right labeled icon button override tiny custom" @click="updateUser">
+                            Update User
+                            <i class="checkmark icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-no-image edit-user-modal user-modal"></div>
+    </div>
+</template>
+
+<script>
+    var emailRE = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
+    export default {
+
+        parent: Dashboard.administrator,
+
+        props: ['root_url', 'resource'],
+
+        data() {
+            return {
+
+                showCaptureBtn: true,
+                showCamera: false,
+                showLoading: false,
+                showError: false,
+                newUser: {
+                    user_id: 0,
+                    firstname: '', 
+                    lastname: '', 
+                    email_address: '', 
+                    username: '',
+                    imageURI: {
+                        src: this.root_url + 'images/profile_images/default.png',
+                        name: 'default.png'
+                    }
+                }
+
+            }
+        },
+
+        computed: {
+            validation() {
+                return {
+                    firstname: !!this.newUser.firstname.trim(),
+                    lastname: !!this.newUser.lastname.trim(),
+                    email_empty: !!this.newUser.email_address.trim(),
+                    email_check: emailRE.test(this.newUser.email_address),
+                }
+            },
+
+            isValid() {
+                var validation = this.validation
+                return Object.keys(validation).every(function (key) {
+                    return validation[key]
+                })
+            }
+        },
+
+        events: {
+
+            callFetchUserEdit(user) {
+                this.showLoading = true;
+                this.fetchUser(user);
+            }
+
+        },
+
+        methods: {
+            /*** Profile Photo ***/
+            // Webcamera methods
+            startVideoCamera() {
+                Webcam.set({
+                    width: 320, height: 240,
+                    dest_width: 320, dest_height: 240,
+                    crop_width: 240, crop_height: 240,
+                    image_format: 'jpeg', jpeg_quality: 90,
+                    flip_horiz: true
+                });
+                Webcam.attach('#video-camera-edit');
+            },
+            takeSnapshot() {
+                this.showCaptureBtn = !this.showCaptureBtn;
+                Webcam.freeze();
+            },
+            retakeSnapshot() {
+                this.showCaptureBtn = !this.showCaptureBtn;
+                Webcam.unfreeze();
+            },
+            closeCamera() {
+                this.showCamera = false;
+                Webcam.reset();
+            },
+            openCamera() {
+                this.startVideoCamera();
+                this.showCamera = true;
+            },
+            setCameraImage() {
+                var self = this;
+                Webcam.snap(function(image_uri) {
+                    self.newUser.imageURI.src = image_uri;
+                    self.newUser.imageURI.name = moment().format('x') + '.jpg';
+                    self.retakeSnapshot();
+                    self.closeCamera();
+                });
+            },
+            // Upload Image Methods
+            selectPhotoUpload() {
+                this.$els.uploadPhoto.click();
+            },
+            setUploadedImage: function(event) {
+                var input = event.target.files[0];
+                var reader = new FileReader();
+                var self = this;
+                reader.onload = function(e){ self.newUser.imageURI.src = e.target.result; }
+                self.newUser.imageURI.name = input.name;
+                reader.readAsDataURL(input);
+            },
+
+
+            disposeResources() {
+                this.showError = false;
+                if(this.showCamera) this.closeCamera();
+                $('.edit-user-modal').fadeOut();
+                this.clearUser();
+            },
+
+            displayFlash(flashMessage) {
+                // Call parent dashboard event to open the "Flash Message"
+                //this.$dispatch('callOpenFlashChild', flashMessage);
+            },
+
+            fetchUser(user) {
+                // Retrieve users
+                this.showLoading = false;
+                this.newUser = {
+                    user_id: user.user_id,
+                    firstname: user.staffs.firstname, 
+                    lastname: user.staffs.lastname, 
+                    email_address: user.staffs.email_address, 
+                    username: user.username,
+                    imageURI: {
+                        src: this.root_url + 'images/profile_images/' + user.staffs.photo,
+                        name: user.staffs.photo
+                    }
+                };
+            },
+
+            updateUser() {
+
+                // Display errors if there are any
+                this.showError = true;
+
+                if(this.isValid) {
+                    // Store to temp variable
+                    var user = this.newUser;
+
+                    // Display loading
+                    this.showLoading = true;
+
+                    // Send post request
+                    this.resource.update({user_id: user.user_id}, {data: user}).then((response) => {
+                        var flashMessage = {
+                            icon: response.data.icon,
+                            header: response.data.header,
+                            body: response.data.body
+                        }
+                        $('.edit-user-modal').fadeOut();
+                        this.showLoading = false;
+                        this.displayFlash(flashMessage);
+
+                        // Refresh administrator list
+                        //this.$dispatch('callFetchUsers');
+
+                        // Clear form
+                        this.clearUser();
+                    });
+                }
+            },
+
+            clearUser() {
+                this.showError = false;
+                this.newUser = {
+                    user_id: 0,
+                    firstname: '', 
+                    lastname: '', 
+                    email_address: '', 
+                    username: '',
+                    imageURI: {
+                        src: this.root_url + 'images/profile_images/default.png',
+                        name: 'default.png'
+                    }
+                }
+            }
+
+        },
+
+        ready() {
+           
+            // Watch if input file changes
+            $('input[type="file"]').change(this.setUploadedImage.bind(this));
+
+        }
+
+    }
+
+</script>

@@ -4,21 +4,6 @@
  */
 require('./bootstrap');
 
-
-/**
- * Register Global Filters
- */
-Vue.filter('momentformat', function(value, format) {
-	return moment(value).tz(window.timezone).format(format);
-});
-
-
-/**
- * Register Global Components
- */
-Vue.component('clock', require('./components/General/Clock.vue'));
-
-
 /**
  * Instantiate Vue intance
  */
@@ -38,21 +23,7 @@ const app = new Vue({
     methods: {
 
     	loginFormSubmit: function() {
-    		/*var loginData = $("#loginForm").serializeArray(), self = this;
-            var data = {
-                _toke: loginData[0].value,
-                username: loginData[1].value,
-                password: loginData[2].value
-            }
-            this.clearData();
-    		this.$http.post('login', data).then((response) => {
-                location.reload();
-            }, (response) => {
-                self.msgError = response.data.error;
-                self.formLoad = false;
-            });*/
-
-            // Check if username is already logged in
+    		// Check if username is already logged in
     	},
 
         emailFormSubmit: function() {

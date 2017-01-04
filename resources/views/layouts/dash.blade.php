@@ -18,8 +18,8 @@
     </head>
     <body>
 
-        <div class="dashboard-container" id="dashcontainer">
-            <div class="dashboard-left" :class="{ 'toggleleft': toggleLeft }">
+        <div class="dashboard-container" id="dashboard">
+            <div class="dashboard-left">
                 <div class="company-name">
                     <i class="edit icon company-logo"></i>
                     <div class="name">
@@ -46,10 +46,10 @@
                     @yield('dashboard-navigation')
                 </div>
             </div>
-            <div class="dashboard-right" :class="{ 'toggleleft': toggleLeft }">
+            <div class="dashboard-right">
                 <div class="body-header">
                     <div class="left">
-                        <div class="left-sidebar-toggle" @click="toggleLeft = !toggleLeft">
+                        <div class="left-sidebar-toggle">
                             <i class="content icon"></i>
                         </div>
                     </div>
@@ -84,24 +84,18 @@
                         <div class="bread-crumb-left">
                             <span>Navigation</span>
                             <div class="ui small breadcrumb bread-crumb">
-                                <a class="section" @click="setBreadcrumb('Dashboard','dashboard')">Home</a>
+                                <a class="section">Home</a>
                                 <a class="section">/</a>
-                                <a class="section">@{{ breadcrumbs.name }}</a>
+                                <a class="section"></a>
                             </div>
                         </div>
                         <div class="bread-crumb-right">
                             <i class="compass loading icon divider nav-icon-selected"></i>
                         </div>
                     </div>
-
-                    <!-- Router View -->
-                    <router-view keep-alive></router-view>
                 </section>
             </div>
         </div>
-
-        <!-- Include Vue components -->
-        <modal></modal>
 
         <script src="{{ asset('js/plugins/jquery.min.js') }}"></script>
         <script src="{{ asset('js/plugins/semantic.min.js') }}"></script>

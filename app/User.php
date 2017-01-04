@@ -24,12 +24,12 @@ class User extends Authenticatable
 
     public function staffs()
     {
-        return $this->hasOne('App\Staff');
+        return $this->hasOne('App\Staff', 'user_id');
     }
 
     public function students()
     {
-        return $this->hasOne('App\Student');
+        return $this->hasOne('App\Student', 'user_id');
     }
 
     public function roles()

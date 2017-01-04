@@ -1,11 +1,14 @@
 /**
  * Declare and initialize time variables
  */
- 
+window.url_protocol = window.location.protocol;
+window.url_host = window.location.host;
+window.url_pathname = window.location.pathname;
+window.url_rootPath = '/ourstudyroom/public/';
+window.url_rootDIR = url_protocol + '//' + url_host + url_rootPath;
 window.timezone = jstz.determine().name();
 window.offset = (moment().tz(timezone).format('Z')).split(':')[0];
 window.datetime = moment().tz(timezone).format();
-
 window._ = require('lodash');
 
 /**
@@ -16,6 +19,8 @@ window._ = require('lodash');
 
 window.Vue = require('vue');
 Vue.use(require('vue-resource'));
+window.VueRouter = require('vue-router');
+Vue.use(window.VueRouter);
 
 /**
  * We'll register a HTTP interceptor to attach the "CSRF" header to each of
